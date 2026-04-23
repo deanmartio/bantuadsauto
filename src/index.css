@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    font-family: 'Poppins', sans-serif;
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background-color: #F7F2EA;
+    color: #2B2033;
+  }
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
+}
