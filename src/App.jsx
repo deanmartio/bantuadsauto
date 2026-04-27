@@ -1,13 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Header from './components/Header';
 import TopFields from './components/TopFields';
 import AdTable from './components/AdTable';
 import ReviewScreen from './components/ReviewScreen';
+import SuccessScreen from './components/SuccessScreen';
 import { validate } from './utils/validation';
 import { generateXLSX } from './utils/xlsxGenerator';
 import { generatePythonScript } from './utils/pythonScriptGenerator';
 import { getLocalDateString } from './utils/driveUtils';
 
+const STORAGE_KEY = 'bantuads_form_draft';
 let nextId = 1;
 
 function createEmptyRow() {
@@ -21,10 +23,39 @@ function createEmptyRow() {
   };
 }
 
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Ensure IDs don't collide with future createEmptyRow() calls
+    if (parsed.adRows?.length) {
+      const maxId = Math.max(...parsed.adRows.map(r => r.id ?? 0));
+      nextId = maxId + 1;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(ngoName, adRows) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ngoName, adRows }));
+  } catch { /* quota exceeded — fail silently */ }
+}
+
 export default function App() {
+  const draft = loadDraft();
   const [screen, setScreen] = useState('form');
-  const [ngoName, setNgoName] = useState('');
-  const [adRows, setAdRows] = useState([createEmptyRow()]);
+  const [ngoName, setNgoName] = useState(draft?.ngoName ?? '');
+  const [adRows, setAdRows] = useState(draft?.adRows ?? [createEmptyRow()]);
+  const [exportedFiles, setExportedFiles] = useState(null); // { xlsxFilename, pyFilename }
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    saveDraft(ngoName, adRows);
+  }, [ngoName, adRows]);
 
   function handleTopChange(field, value) {
     if (field === 'ngoName') setNgoName(value);
@@ -58,16 +89,30 @@ export default function App() {
 
   function handleExport() {
     const date = getLocalDateString();
+    const pyFilename = `download_creatives_${ngoName}_${date}.py`;
 
-    // Generate both files first, then stagger downloads 400ms apart
-    // (browsers block simultaneous programmatic downloads from the same gesture)
     const pyContent = generatePythonScript(ngoName, adRows);
     const pyBlob = new Blob([pyContent], { type: 'text/plain' });
 
     const { blob: xlsxBlob, filename: xlsxFilename } = generateXLSX(ngoName, adRows);
 
-    triggerDownload(pyBlob, `download_creatives_${ngoName}_${date}.py`);
+    triggerDownload(pyBlob, pyFilename);
     setTimeout(() => triggerDownload(xlsxBlob, xlsxFilename), 400);
+
+    // Clear draft and show success screen
+    setTimeout(() => {
+      localStorage.removeItem(STORAGE_KEY);
+      setExportedFiles({ xlsxFilename, pyFilename });
+      setScreen('success');
+    }, 500);
+  }
+
+  function handleStartOver() {
+    nextId = 1;
+    setNgoName('');
+    setAdRows([createEmptyRow()]);
+    setExportedFiles(null);
+    setScreen('form');
   }
 
   return (
@@ -75,7 +120,7 @@ export default function App() {
       <Header />
 
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {screen === 'form' ? (
+        {screen === 'form' && (
           <>
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-[#2B2033]">Submission Iklan</h1>
@@ -84,10 +129,7 @@ export default function App() {
               </p>
             </div>
 
-            <TopFields
-              ngoName={ngoName}
-              onChange={handleTopChange}
-            />
+            <TopFields ngoName={ngoName} onChange={handleTopChange} />
 
             <AdTable
               adRows={adRows}
@@ -115,12 +157,22 @@ export default function App() {
 
             <div className="h-20" />
           </>
-        ) : (
+        )}
+
+        {screen === 'review' && (
           <ReviewScreen
             ngoName={ngoName}
             adRows={adRows}
             onBack={() => setScreen('form')}
             onExport={handleExport}
+          />
+        )}
+
+        {screen === 'success' && (
+          <SuccessScreen
+            ngoName={ngoName}
+            exportedFiles={exportedFiles}
+            onStartOver={handleStartOver}
           />
         )}
       </main>
