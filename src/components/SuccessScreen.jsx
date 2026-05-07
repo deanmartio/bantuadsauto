@@ -50,8 +50,8 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
         <ol className="space-y-3">
           {[
             'Pastikan kedua file sudah ada di folder Downloads kamu.',
-            'Kirim kedua file tersebut ke tim KawanBantu — bisa lewat WhatsApp langsung atau grup chat yang sudah ada.',
-            'Tim KawanBantu akan memproses: jalankan script Python, upload video ke Meta Media Library, isi kolom kuning di XLSX (Ad Set ID & Identity), lalu import.',
+            'Kirim XLSX dan script Python ke tim KawanBantu — via WhatsApp atau grup chat.',
+            'Tim KawanBantu akan jalankan script → dapat folder berisi video → buka dialog Import di Ads Manager → upload XLSX di bagian File + video di bagian Videos → klik Import.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="w-5 h-5 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">

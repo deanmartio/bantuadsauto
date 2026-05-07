@@ -108,9 +108,13 @@ else:
     print(f"Semua {total} file berhasil didownload ke folder '{FOLDER}'.")
     print()
     print("Langkah selanjutnya:")
-    print(f"  1. Upload semua file di folder '{FOLDER}' ke Meta Media Library")
-    print("     (Ads Manager -> hamburger menu -> Media Library -> Upload)")
-    print("  2. Import file XLSX ke Meta Ads Manager")
-    print("     Meta akan mencocokkan nama file secara otomatis.")
+    print("  1. Buka Ads Manager -> klik ikon Import/Export -> pilih 'Ads' di bawah Import.")
+    print("  2. Di dialog import, ada 3 bagian:")
+    print("       File   -> upload file XLSX")
+    print("       Images -> upload file gambar (jika ada)")
+    print(f"      Videos -> upload file video dari folder '{FOLDER}'")
+    print("  3. Klik Import. Meta akan mencocokkan nama file secara otomatis.")
+    print()
+    print("  CATATAN: Meta membatasi max 10 video per import, masing-masing max 10 MB.")
 `;
 }
