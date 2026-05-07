@@ -30,18 +30,21 @@ export function generatePythonScript(ngoName, adRows) {
 import sys
 import shutil
 import webbrowser
+import getpass
 
 try:
     import gdown
+    import requests
     import openpyxl
 except ImportError:
-    print("Install dulu: pip install gdown openpyxl")
+    print("Install dulu: pip install gdown requests openpyxl")
     sys.exit(1)
 
-NGO_NAME  = ${JSON.stringify(ngoName)}
-DATE      = ${JSON.stringify(date)}
-FOLDER    = f"{NGO_NAME}_creatives_{DATE}"
-XLSX_FILE = ${JSON.stringify(xlsxFilename)}
+NGO_NAME   = ${JSON.stringify(ngoName)}
+DATE       = ${JSON.stringify(date)}
+FOLDER     = f"{NGO_NAME}_creatives_{DATE}"
+XLSX_FILE  = ${JSON.stringify(xlsxFilename)}
+META_URL   = "https://graph.facebook.com/v25.0"
 
 CREATIVE_LIST = [
 ${listItems}
@@ -101,49 +104,81 @@ def download_all():
     return errors
 
 
-# ── STEP 2: Kumpulkan Video ID / Image Hash & update XLSX ────────────────────
+# ── STEP 2: Fetch IDs from Meta & update XLSX ────────────────────────────────
 
-def collect_ids_and_update():
+def paginate(url, params):
+    """Yield all items across paginated Meta API responses."""
+    while url:
+        r = requests.get(url, params=params, timeout=30)
+        d = r.json()
+        if 'error' in d:
+            raise Exception(d['error'].get('message', str(d['error'])))
+        yield from d.get('data', [])
+        url = d.get('paging', {}).get('next')
+        params = {}   # next URL already contains all params
+
+
+def fetch_meta_ids(token, ad_account_id):
+    """Return {filename: meta_id} by querying advideos + adimages."""
+    if not ad_account_id.startswith('act_'):
+        ad_account_id = f"act_{ad_account_id}"
+
     all_files = [fn for _, fns, _ in CREATIVE_LIST for fn in fns]
-    videos  = [f for f in all_files if f.lower().endswith('.mp4')]
-    images  = [f for f in all_files if not f.lower().endswith('.mp4')]
-
+    videos    = [f for f in all_files if f.lower().endswith('.mp4')]
+    images    = [f for f in all_files if not f.lower().endswith('.mp4')]
     filename_to_id = {}
 
+    # ── Videos ───────────────────────────────────────────────────────────────
     if videos:
-        print("\\nUPLOAD VIDEO ke Meta Media Library:")
-        print("  Buka Ads Manager → hamburger menu → Media Library → Upload")
-        print("  Upload semua file .mp4 dari folder berikut:")
-        print(f"  📁 {os.path.abspath(FOLDER)}\\n")
+        print("  Mengambil daftar video dari Media Library...", end=" ", flush=True)
+        video_map = {}   # title (no ext) → "v:ID"
+        for v in paginate(f"{META_URL}/{ad_account_id}/advideos",
+                          {'access_token': token, 'fields': 'id,title', 'limit': 100}):
+            if 'title' in v:
+                video_map[v['title']] = f"v:{v['id']}"
+        print(f"{len(video_map)} video ditemukan.")
+
+        # Expected video titles = filename without extension
         for filename in videos:
-            filepath = os.path.join(FOLDER, filename)
-            size_mb  = os.path.getsize(filepath) / 1024 / 1024 if os.path.exists(filepath) else 0
-            print(f"  [{filename}]  ({size_mb:.1f} MB)")
-            vid = input(f"    Paste Video ID (format v:XXXXXXXXX, Enter=skip): ").strip()
-            if vid:
-                if not vid.startswith('v:'):
-                    vid = f"v:{vid}"
-                filename_to_id[filename] = vid
+            title = os.path.splitext(filename)[0]
+            if title in video_map:
+                filename_to_id[filename] = video_map[title]
+                print(f"  ✓ {filename}  →  {video_map[title]}")
+            else:
+                print(f"  ✗ {filename}  — tidak ditemukan di Media Library (belum diupload?)")
 
+    # ── Images ───────────────────────────────────────────────────────────────
     if images:
-        print("\\nUPLOAD GAMBAR ke Meta Media Library:")
-        for filename in images:
-            filepath = os.path.join(FOLDER, filename)
-            size_mb  = os.path.getsize(filepath) / 1024 / 1024 if os.path.exists(filepath) else 0
-            print(f"  [{filename}]  ({size_mb:.1f} MB)")
-            h = input(f"    Paste Image Hash (Enter=skip): ").strip()
-            if h:
-                filename_to_id[filename] = h
+        print("  Mengambil daftar gambar dari Media Library...", end=" ", flush=True)
+        image_map = {}   # name → hash  (Meta stores name with extension)
+        for img in paginate(f"{META_URL}/{ad_account_id}/adimages",
+                            {'access_token': token, 'fields': 'hash,name', 'limit': 100}):
+            if 'name' in img and 'hash' in img:
+                image_map[img['name']] = img['hash']
+                # also index without extension as fallback
+                image_map[os.path.splitext(img['name'])[0]] = img['hash']
+        print(f"{len(image_map) // 2} gambar ditemukan.")
 
+        for filename in images:
+            key = filename if filename in image_map else os.path.splitext(filename)[0]
+            if key in image_map:
+                filename_to_id[filename] = image_map[key]
+                print(f"  ✓ {filename}  →  {image_map[key][:16]}...")
+            else:
+                print(f"  ✗ {filename}  — tidak ditemukan di Media Library (belum diupload?)")
+
+    return filename_to_id
+
+
+def write_xlsx(filename_to_id):
     if not filename_to_id:
-        print("\\nTidak ada ID yang dimasukkan. XLSX tidak diupdate.")
-        print(f"Isi kolom Video ID / Image Hash di '{XLSX_FILE}' secara manual.")
+        print("\\nTidak ada ID yang cocok ditemukan. XLSX tidak diupdate.")
         return
 
     if not os.path.exists(XLSX_FILE):
         print(f"\\n'{XLSX_FILE}' tidak ditemukan di folder ini.")
         print("Pastikan file XLSX ada di folder yang sama dengan script ini.")
-        print("\\nMapping ID yang sudah dikumpulkan:")
+        print("\\nMapping ID yang ditemukan:")
         for fname, mid in filename_to_id.items():
             print(f"  {fname}  →  {mid}")
         return
@@ -193,27 +228,46 @@ else:
     print(f"  Selesai! {total} file tersimpan di folder '{FOLDER}'.")
 print("=" * 55)
 
-print("""
-Step 2: Upload ke Meta Media Library & catat Video ID
-  Script ini akan memandu kamu satu per satu.
-  Setelah upload tiap video di Meta, paste Video ID-nya di sini.
-  Video ID bisa dilihat di Media Library → klik video → detail panel.
+print(f"""
+Step 2: Upload ke Meta Media Library, lalu script fetch Video ID otomatis.
 
-  (Tekan Enter langsung untuk skip dan isi XLSX manual nanti.)
+  Yang perlu disiapkan:
+    • Access Token  — dari https://developers.facebook.com/tools/explorer
+                      Pilih app → User Token → centang: ads_read → Generate
+    • Ad Account ID — dari URL Ads Manager: angka setelah ?act=
+
+  (Tekan Enter langsung untuk skip — isi XLSX manual nanti.)
 """)
 
 ans = input("Lanjut ke Step 2? (y/Enter=skip): ").strip().lower()
-if ans == 'y':
-    print("\\nMembuka Meta Media Library di browser...")
-    webbrowser.open("https://adsmanager.facebook.com/adsmanager/manage/images")
-    print("Upload semua file .mp4 dari folder berikut:")
-    print(f"  📁 {os.path.abspath(FOLDER)}")
-    print("Setelah selesai upload, kembali ke sini dan masukkan Video ID-nya.\\n")
-    input("Tekan Enter setelah semua video selesai diupload...")
-    collect_ids_and_update()
-else:
+if ans != 'y':
     print(f"\\nSkip. Upload file dari folder '{FOLDER}' ke Meta secara manual,")
     print(f"lalu isi kolom Video ID di '{XLSX_FILE}' sebelum import.")
+    print("\\nSelesai!")
+    sys.exit(0)
+
+token         = getpass.getpass("Access Token   : ").strip()
+ad_account_id = input("Ad Account ID  : ").strip()
+
+if not token or not ad_account_id:
+    print("Token atau Ad Account ID kosong. Step 2 dilewati.")
+    print("\\nSelesai!")
+    sys.exit(0)
+
+print("\\nMembuka Meta Media Library di browser...")
+webbrowser.open("https://adsmanager.facebook.com/adsmanager/manage/images")
+print(f"Upload semua file dari folder ini ke Media Library:")
+print(f"  📁 {os.path.abspath(FOLDER)}")
+print("Pastikan nama file tidak berubah saat upload.\\n")
+input("Tekan Enter setelah semua file selesai diupload di browser...")
+
+print("\\nMengambil ID dari Meta Media Library...")
+try:
+    filename_to_id = fetch_meta_ids(token, ad_account_id)
+    write_xlsx(filename_to_id)
+except Exception as e:
+    print(f"\\nERROR: {e}")
+    print("Coba cek: apakah token masih valid? Apakah Ad Account ID benar?")
 
 print("\\nSelesai!")
 `;
