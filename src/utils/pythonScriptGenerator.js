@@ -2,7 +2,6 @@ import { buildCreativeFilename, getLocalDateString } from './driveUtils';
 
 export function generatePythonScript(ngoName, adRows) {
   const date = getLocalDateString();
-  const folderName = `${ngoName}_creatives_${date}`;
 
   const creativeList = [];
   adRows.forEach(row => {
@@ -20,11 +19,12 @@ export function generatePythonScript(ngoName, adRows) {
   return `import os
 import sys
 import re
+import shutil
 
 try:
-    import requests
+    import gdown
 except ImportError:
-    print("Install dulu: pip install requests")
+    print("Install dulu: pip install gdown")
     sys.exit(1)
 
 NGO_NAME = ${JSON.stringify(ngoName)}
@@ -35,27 +35,79 @@ CREATIVE_LIST = [
 ${listItems}
 ]
 
-def get_direct_url(drive_link):
-    match = re.search(r'/d/([a-zA-Z0-9_-]+)', drive_link)
-    if not match:
-        match = re.search(r'id=([a-zA-Z0-9_-]+)', drive_link)
-    if not match:
-        return drive_link
-    file_id = match.group(1)
-    return f"https://drive.google.com/uc?export=download&id={file_id}"
+def is_folder_link(link):
+    return '/folders/' in link
 
 os.makedirs(FOLDER, exist_ok=True)
 
-for drive_link, filename in CREATIVE_LIST:
-    print(f"Mendownload {filename}...", end=" ")
-    url = get_direct_url(drive_link)
-    r = requests.get(url, stream=True)
-    filepath = os.path.join(FOLDER, filename)
-    with open(filepath, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=8192):
-            f.write(chunk)
-    print("Selesai")
+errors = []
 
-print(f"\\nSemua {len(CREATIVE_LIST)} file berhasil didownload ke folder {FOLDER}.\\nZip folder ini lalu upload ke Meta Media Library.")
+for drive_link, filename in CREATIVE_LIST:
+    filepath = os.path.join(FOLDER, filename)
+
+    if is_folder_link(drive_link):
+        # --- Folder link: download all files inside the folder ---
+        print(f"\\nLink folder terdeteksi untuk '{filename}'.")
+        print("Mendownload semua file di dalam folder...")
+
+        temp_dir = os.path.join(FOLDER, f"_tmp_{os.path.splitext(filename)[0]}")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        try:
+            downloaded = gdown.download_folder(
+                drive_link, output=temp_dir, quiet=False, remaining_ok=True
+            )
+        except Exception as e:
+            print(f"  ERROR: {e}")
+            errors.append(filename)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            continue
+
+        files = sorted([
+            f for f in os.listdir(temp_dir)
+            if os.path.isfile(os.path.join(temp_dir, f)) and not f.startswith('.')
+        ])
+
+        if not files:
+            print(f"  Tidak ada file yang berhasil didownload dari folder.")
+            errors.append(filename)
+        elif len(files) == 1:
+            # Single file in folder — rename to expected filename
+            src = os.path.join(temp_dir, files[0])
+            os.replace(src, filepath)
+            print(f"  ✓ Disimpan sebagai '{filename}'")
+        else:
+            # Multiple files — keep original names, warn user
+            for f in files:
+                dest = os.path.join(FOLDER, f)
+                os.replace(os.path.join(temp_dir, f), dest)
+            print(f"  ⚠️  {len(files)} file didownload dari folder dengan nama aslinya:")
+            for f in files:
+                print(f"     - {f}")
+            print(f"  Rename secara manual sesuai kebutuhan.")
+
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    else:
+        # --- File link: download directly with expected filename ---
+        print(f"Mendownload {filename}...", end=" ", flush=True)
+        try:
+            result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
+            if result:
+                print(f"✓ Selesai")
+            else:
+                print(f"GAGAL (cek apakah link sudah di-set 'Anyone with the link can view')")
+                errors.append(filename)
+        except Exception as e:
+            print(f"ERROR: {e}")
+            errors.append(filename)
+
+print(f"\\n{'='*50}")
+if errors:
+    print(f"⚠️  {len(errors)} file gagal didownload: {', '.join(errors)}")
+    print("Pastikan semua link Google Drive sudah di-set ke 'Anyone with the link can view'.")
+else:
+    print(f"✓ Semua {len(CREATIVE_LIST)} file berhasil didownload ke folder '{FOLDER}'.")
+    print("Zip folder ini lalu upload ke Meta Media Library.")
 `;
 }
