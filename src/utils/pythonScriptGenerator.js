@@ -49,8 +49,8 @@ ${listItems}
 ]
 
 CHUNK_SIZE       = 4 * 1024 * 1024   # 4 MB per chunk
-META_VIDEO_URL   = "https://graph-video.facebook.com/v19.0"
-META_GRAPH_URL   = "https://graph.facebook.com/v19.0"
+META_VIDEO_URL   = "https://graph-video.facebook.com/v21.0"
+META_GRAPH_URL   = "https://graph.facebook.com/v21.0"
 
 
 # ── STEP 1: Download dari Google Drive ───────────────────────────────────────
@@ -207,9 +207,45 @@ def update_xlsx(filename_to_id):
     print(f"  {updated} baris diupdate. '{XLSX_FILE}' siap diimport ke Meta!")
 
 
+def verify_token(token, ad_account_id):
+    """Check token is a valid User token with ads_management access."""
+    r = requests.get(f"{META_GRAPH_URL}/me", params={'access_token': token}, timeout=15)
+    d = r.json()
+    if 'error' in d:
+        msg = d['error'].get('message', str(d['error']))
+        raise Exception(f"Token tidak valid: {msg}")
+    user_name = d.get('name', 'unknown')
+
+    r2 = requests.get(f"{META_GRAPH_URL}/{ad_account_id}", params={
+        'access_token': token, 'fields': 'name,account_status'
+    }, timeout=15)
+    d2 = r2.json()
+    if 'error' in d2:
+        msg = d2['error'].get('message', str(d2['error']))
+        raise Exception(
+            f"Ad Account tidak bisa diakses: {msg}\\n"
+            "  Pastikan Ad Account ID benar dan token punya izin ads_management."
+        )
+    acct_name = d2.get('name', ad_account_id)
+    print(f"  Token OK  → user: {user_name}")
+    print(f"  Ad Account → {acct_name} ({ad_account_id})")
+
+
 def upload_all(token, ad_account_id):
     if not ad_account_id.startswith('act_'):
         ad_account_id = f"act_{ad_account_id}"
+
+    print("\\nMemverifikasi token...")
+    try:
+        verify_token(token, ad_account_id)
+    except Exception as e:
+        print(f"  ERROR: {e}")
+        print("\\n  Tips jika ada error 'pages_manage_posts':")
+        print("  → Kamu memakai Page Token, bukan User Token.")
+        print("  → Di Graph API Explorer, pastikan dropdown kanan atas")
+        print("    menampilkan 'User Token', bukan nama halaman Facebook.")
+        print("  → Generate ulang token dengan hanya centang: ads_management")
+        return
 
     all_files = [fn for _, fns, _ in CREATIVE_LIST for fn in fns]
     filename_to_id = {}
@@ -253,15 +289,19 @@ print("=" * 55)
 
 print("""
 Step 2: Upload ke Meta & isi Video ID di XLSX otomatis
-  Butuh: Access Token + Ad Account ID dari Meta.
+  Butuh: Access Token (User Token) + Ad Account ID dari Meta.
 
-  Cara dapat Access Token (gratis):
+  Cara dapat Access Token:
     1. Buka https://developers.facebook.com/tools/explorer
-    2. Pilih app kamu -> Generate Access Token
-    3. Centang permission: ads_management
-    4. Copy token-nya
+    2. Di dropdown KANAN ATAS — pilih app kamu
+    3. PENTING: pastikan di bawahnya tertulis "User Token"
+       (bukan nama halaman Facebook — itu Page Token, tidak bisa dipakai)
+    4. Klik "Generate Access Token"
+    5. Centang HANYA: ads_management → klik Generate
+    6. Copy token-nya
 
-  Ad Account ID: lihat URL Ads Manager -> angka setelah ?act=
+  Ad Account ID: buka Ads Manager -> lihat URL -> angka setelah ?act=
+    Contoh: https://adsmanager.facebook.com/...?act=123456789 -> ID-nya 123456789
 
   (Tekan Enter untuk skip dan isi Video ID manual nanti.)
 """)
