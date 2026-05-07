@@ -229,14 +229,27 @@ else:
 print("=" * 55)
 
 print(f"""
-Step 2: Upload ke Meta Media Library, lalu script fetch Video ID otomatis.
+Step 2: Upload video ke Meta, lalu script otomatis ambil Video ID-nya.
 
-  Yang perlu disiapkan:
-    • Access Token  — dari https://developers.facebook.com/tools/explorer
-                      Pilih app → User Token → centang: ads_read → Generate
-    • Ad Account ID — dari URL Ads Manager: angka setelah ?act=
+  Lakukan langkah ini SEBELUM ketik y:
 
-  (Tekan Enter langsung untuk skip — isi XLSX manual nanti.)
+  [1] Upload semua file dari folder ini ke Meta Media Library:
+        📁 {os.path.abspath(FOLDER)}
+      Caranya: buka Ads Manager → ikon garis tiga (☰) → Media Library → Upload
+
+  [2] Siapkan Access Token:
+      → Buka https://developers.facebook.com/tools/explorer
+      → Dropdown kanan atas: pilih app kamu, pastikan tertulis "User Token"
+      → Klik "Generate Access Token" → centang ads_read → Generate → Copy
+
+  [3] Siapkan Ad Account ID:
+      → Buka Ads Manager, lihat URL-nya
+      → Cari angka setelah ?act= → itulah Ad Account ID kamu
+      → Contoh: ?act=1234567890 → ID-nya adalah 1234567890
+
+  Setelah ketiga langkah di atas selesai, ketik y lalu Enter.
+  Script akan otomatis ambil semua Video ID dan isi XLSX.
+  (Enter saja = skip, isi XLSX manual nanti.)
 """)
 
 ans = input("Lanjut ke Step 2? (y/Enter=skip): ").strip().lower()
