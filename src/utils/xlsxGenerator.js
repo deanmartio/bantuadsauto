@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { buildCreativeFilename, buildAdName, getLocalDateString } from './driveUtils';
+import { getExpandedCreatives, getLocalDateString } from './driveUtils';
 
 // Full 422-column header list matching the real Meta bulk upload export
 const HEADERS = [
@@ -166,11 +166,10 @@ const FIXED = {
   'Buy With Integration Partner':               'NONE',
   'Ad Set Run Status':                          'ACTIVE',
   'Ad Set Lifetime Impressions':                '0',
-  'Destination Type':                           'UNDEFINED',
+  'Destination Type':                           'WEBSITE',
   'Use Accelerated Delivery':                   'No',
   'Is Budget Scheduling Enabled For Ad Set':    'No',
   'Ad Set High Demand Periods':                 '[]',
-  'Link Object ID':                             'o:111482045114813',
   'Optimized Conversion Tracking Pixels':       'tp:893612609287097',
   'Optimized Event':                            'PURCHASE',
   'Countries':                                  'ID',
@@ -190,7 +189,6 @@ const FIXED = {
   'Optimize text per person':                   'No',
   'Conversion Tracking Pixels':                 'tp:893612609287097',
   'Optimized Ad Creative':                      'No',
-  'Instagram Account ID':                       'x:5690120761048239',
   'Call to Action':                             'LEARN_MORE',
   'Additional Custom Tracking Specs':           '[]',
   'Video Retargeting':                          'No',
@@ -210,17 +208,20 @@ export function generateXLSX(ngoName, adRows) {
 
   let rowIdx = 2;
 
+  // Columns the team must fill in after receiving — highlighted yellow
+  const YELLOW_COLS = new Set([
+    COL['Ad Set ID'], COL['Ad Set Name'],
+    COL['Link Object ID'], COL['Instagram Account ID'],
+  ]);
+
   adRows.forEach(row => {
-    const filledCreatives = row.creatives.filter(c => c.link.trim());
+    const expanded  = getExpandedCreatives(row);
     const titleValue = row.headlines.filter(h => h.trim()).join('\n');
     const bodyValue  = row.primaryTexts.filter(t => t.trim()).join('\n');
 
-    filledCreatives.forEach((creative, ci) => {
-      const adName  = buildAdName(row.adName, ci, filledCreatives.length);
-      const filename = buildCreativeFilename(row.adName, ci, filledCreatives.length, creative.type);
-      const isVideo  = creative.type === 'Video';
+    expanded.forEach(({ adName, filename, type }) => {
+      const isVideo = type === 'Video';
 
-      // Start with all cells blank
       const rowData = new Array(HEADERS.length).fill('');
 
       // Apply fixed values
@@ -229,14 +230,14 @@ export function generateXLSX(ngoName, adRows) {
       });
 
       // Per-row variable values
-      rowData[COL['Ad Set Name']] = ngoName;   // Required by Meta — team can override
-      rowData[COL['Link']]      = row.campaignLink;
-      rowData[COL['Ad Name']]   = adName;
-      rowData[COL['Title']]     = titleValue;
-      rowData[COL['Body']]      = bodyValue;
-      rowData[COL['Creative Type']] = isVideo ? 'Video Page Post Ad' : 'Link Page Post Ad';
+      rowData[COL['Ad Set Name']]        = ngoName;            // Required; team can rename
+      rowData[COL['Link']]               = row.campaignLink;   // Ad-set level link
+      rowData[COL['Call to Action Link']] = row.campaignLink;  // Ad creative destination URL
+      rowData[COL['Ad Name']]            = adName;
+      rowData[COL['Title']]              = titleValue;
+      rowData[COL['Body']]               = bodyValue;
+      rowData[COL['Creative Type']]      = isVideo ? 'Video Page Post Ad' : 'Link Page Post Ad';
 
-      // File name goes into the correct column based on creative type
       if (isVideo) {
         rowData[COL['Video File Name']] = filename;
       } else {
@@ -248,13 +249,11 @@ export function generateXLSX(ngoName, adRows) {
         const addr = XLSX.utils.encode_col(colIdx) + rowIdx;
         const cell = { t: 's', v: val };
 
-        // Wrap text for multi-variant title and body
         if (colIdx === COL['Title'] || colIdx === COL['Body']) {
           cell.s = { alignment: { wrapText: true } };
         }
 
-        // Yellow fill on Ad Set ID and Ad Set Name — team fills these after receiving file
-        if (colIdx === COL['Ad Set ID'] || colIdx === COL['Ad Set Name']) {
+        if (YELLOW_COLS.has(colIdx)) {
           cell.s = { fill: { fgColor: { rgb: 'FFFF99' } } };
         }
 

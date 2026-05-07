@@ -13,7 +13,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
 
   function addCreative() {
     if (row.creatives.length >= 5) return;
-    updateField('creatives', [...row.creatives, { link: '', type: 'Video' }]);
+    updateField('creatives', [...row.creatives, { link: '', type: 'Video', count: 1 }]);
   }
 
   function removeCreative(ci) {

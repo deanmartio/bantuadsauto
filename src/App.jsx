@@ -17,7 +17,7 @@ function createEmptyRow() {
     id: nextId++,
     adName: '',
     campaignLink: '',
-    creatives: [{ link: '', type: 'Video' }],
+    creatives: [{ link: '', type: 'Video', count: 1 }],
     primaryTexts: [''],
     headlines: [''],
   };
