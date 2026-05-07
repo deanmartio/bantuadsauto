@@ -173,6 +173,7 @@ export default function App() {
             ngoName={ngoName}
             exportedFiles={exportedFiles}
             onStartOver={handleStartOver}
+            onEdit={() => setScreen('form')}
           />
         )}
       </main>

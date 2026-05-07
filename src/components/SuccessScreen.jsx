@@ -1,4 +1,4 @@
-export default function SuccessScreen({ ngoName, exportedFiles, onStartOver }) {
+export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onEdit }) {
 
   return (
     <div className="max-w-xl mx-auto pt-10 pb-24 flex flex-col items-center text-center">
@@ -65,6 +65,16 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver }) {
 
       {/* CTA buttons */}
       <div className="w-full flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="w-full flex items-center justify-center gap-2 border-2 border-[#2A9E99] text-[#2A9E99] font-semibold rounded-xl px-6 py-3 text-sm hover:bg-teal-50 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Edit Submission
+        </button>
         <button
           type="button"
           onClick={onStartOver}
