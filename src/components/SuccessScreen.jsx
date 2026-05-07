@@ -51,7 +51,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
           {[
             'Pastikan kedua file sudah ada di folder Downloads kamu.',
             'Kirim kedua file tersebut ke tim KawanBantu — bisa lewat WhatsApp langsung atau grup chat yang sudah ada.',
-            'Tim KawanBantu akan memproses: jalankan script Python, upload video ke Meta Media Library, isi kolom kuning di XLSX (Ad Set ID, Video ID, Identity), lalu import.',
+            'Tim KawanBantu akan memproses: jalankan script Python, upload video ke Meta Media Library, isi kolom kuning di XLSX (Ad Set ID & Identity), lalu import.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="w-5 h-5 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
