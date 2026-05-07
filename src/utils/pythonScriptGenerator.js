@@ -29,14 +29,12 @@ export function generatePythonScript(ngoName, adRows) {
   return `import os
 import sys
 import shutil
-import getpass
 
 try:
     import gdown
-    import requests
     import openpyxl
 except ImportError:
-    print("Install dulu: pip install gdown requests openpyxl")
+    print("Install dulu: pip install gdown openpyxl")
     sys.exit(1)
 
 NGO_NAME  = ${JSON.stringify(ngoName)}
@@ -47,10 +45,6 @@ XLSX_FILE = ${JSON.stringify(xlsxFilename)}
 CREATIVE_LIST = [
 ${listItems}
 ]
-
-CHUNK_SIZE       = 4 * 1024 * 1024   # 4 MB per chunk
-META_VIDEO_URL   = "https://graph-video.facebook.com/v25.0"
-META_GRAPH_URL   = "https://graph.facebook.com/v25.0"
 
 
 # ── STEP 1: Download dari Google Drive ───────────────────────────────────────
@@ -106,75 +100,51 @@ def download_all():
     return errors
 
 
-# ── STEP 2: Upload ke Meta Media Library ─────────────────────────────────────
+# ── STEP 2: Kumpulkan Video ID / Image Hash & update XLSX ────────────────────
 
-def upload_video(filepath, filename, token, ad_account_id):
-    """Resumable (chunked) upload — handles files of any size."""
-    file_size = os.path.getsize(filepath)
-    name      = os.path.splitext(filename)[0]
+def collect_ids_and_update():
+    all_files = [fn for _, fns, _ in CREATIVE_LIST for fn in fns]
+    videos  = [f for f in all_files if f.lower().endswith('.mp4')]
+    images  = [f for f in all_files if not f.lower().endswith('.mp4')]
 
-    # Phase 1: start session
-    r = requests.post(f"{META_VIDEO_URL}/{ad_account_id}/advideos", data={
-        'access_token': token, 'upload_phase': 'start',
-        'file_size': file_size, 'name': name,
-    }, timeout=30)
-    d = r.json()
-    if 'error' in d:
-        raise Exception(d['error'].get('message', str(d['error'])))
+    filename_to_id = {}
 
-    video_id         = d['video_id']
-    session_id       = d['upload_session_id']
-    start_offset     = int(d['start_offset'])
-    end_offset       = int(d['end_offset'])
+    if videos:
+        print("\\nUPLOAD VIDEO ke Meta Media Library:")
+        print("  Buka Ads Manager → hamburger menu → Media Library → Upload")
+        print("  Upload semua file .mp4 dari folder berikut:")
+        print(f"  📁 {os.path.abspath(FOLDER)}\\n")
+        for filename in videos:
+            filepath = os.path.join(FOLDER, filename)
+            size_mb  = os.path.getsize(filepath) / 1024 / 1024 if os.path.exists(filepath) else 0
+            print(f"  [{filename}]  ({size_mb:.1f} MB)")
+            vid = input(f"    Paste Video ID (format v:XXXXXXXXX, Enter=skip): ").strip()
+            if vid:
+                if not vid.startswith('v:'):
+                    vid = f"v:{vid}"
+                filename_to_id[filename] = vid
 
-    # Phase 2: upload chunks
-    with open(filepath, 'rb') as f:
-        while start_offset < file_size:
-            f.seek(start_offset)
-            chunk = f.read(end_offset - start_offset)
-            r = requests.post(f"{META_VIDEO_URL}/{video_id}", data={
-                'access_token': token, 'upload_phase': 'transfer',
-                'upload_session_id': session_id, 'start_offset': start_offset,
-            }, files={'video_file_chunk': chunk}, timeout=300)
-            d = r.json()
-            if 'error' in d:
-                raise Exception(d['error'].get('message', str(d['error'])))
-            start_offset = int(d['start_offset'])
-            end_offset   = int(d['end_offset'])
-            pct = min(100, int(start_offset / file_size * 100))
-            print(f"\\r  Uploading... {pct}%", end="", flush=True)
-
-    # Phase 3: finish
-    r = requests.post(f"{META_VIDEO_URL}/{video_id}", data={
-        'access_token': token, 'upload_phase': 'finish',
-        'upload_session_id': session_id,
-    }, timeout=60)
-    d = r.json()
-    if not d.get('success'):
-        raise Exception(str(d))
-
-    print(f"\\r  Upload selesai (100%)        ")
-    return f"v:{video_id}"
-
-
-def upload_image(filepath, filename, token, ad_account_id):
-    with open(filepath, 'rb') as f:
-        r = requests.post(f"{META_GRAPH_URL}/{ad_account_id}/adimages",
-            data={'access_token': token},
-            files={filename: f}, timeout=120)
-    d = r.json()
-    images = d.get('images', {})
     if images:
-        return list(images.values())[0].get('hash', '')
-    raise Exception(str(d.get('error', d)))
+        print("\\nUPLOAD GAMBAR ke Meta Media Library:")
+        for filename in images:
+            filepath = os.path.join(FOLDER, filename)
+            size_mb  = os.path.getsize(filepath) / 1024 / 1024 if os.path.exists(filepath) else 0
+            print(f"  [{filename}]  ({size_mb:.1f} MB)")
+            h = input(f"    Paste Image Hash (Enter=skip): ").strip()
+            if h:
+                filename_to_id[filename] = h
 
+    if not filename_to_id:
+        print("\\nTidak ada ID yang dimasukkan. XLSX tidak diupdate.")
+        print(f"Isi kolom Video ID / Image Hash di '{XLSX_FILE}' secara manual.")
+        return
 
-def update_xlsx(filename_to_id):
     if not os.path.exists(XLSX_FILE):
-        print(f"  '{XLSX_FILE}' tidak ditemukan di folder ini.")
-        print("  Mapping ID (isi manual ke kolom Video ID / Image Hash di XLSX):")
+        print(f"\\n'{XLSX_FILE}' tidak ditemukan di folder ini.")
+        print("Pastikan file XLSX ada di folder yang sama dengan script ini.")
+        print("\\nMapping ID yang sudah dikumpulkan:")
         for fname, mid in filename_to_id.items():
-            print(f"    {fname}  ->  {mid}")
+            print(f"  {fname}  →  {mid}")
         return
 
     wb   = openpyxl.load_workbook(XLSX_FILE)
@@ -204,72 +174,7 @@ def update_xlsx(filename_to_id):
                 updated += 1
 
     wb.save(XLSX_FILE)
-    print(f"  {updated} baris diupdate. '{XLSX_FILE}' siap diimport ke Meta!")
-
-
-def verify_token(token, ad_account_id):
-    """Check token is a valid User token with ads_management access."""
-    r = requests.get(f"{META_GRAPH_URL}/me", params={'access_token': token}, timeout=15)
-    d = r.json()
-    if 'error' in d:
-        msg = d['error'].get('message', str(d['error']))
-        raise Exception(f"Token tidak valid: {msg}")
-    user_name = d.get('name', 'unknown')
-
-    r2 = requests.get(f"{META_GRAPH_URL}/{ad_account_id}", params={
-        'access_token': token, 'fields': 'name,account_status'
-    }, timeout=15)
-    d2 = r2.json()
-    if 'error' in d2:
-        msg = d2['error'].get('message', str(d2['error']))
-        raise Exception(
-            f"Ad Account tidak bisa diakses: {msg}\\n"
-            "  Pastikan Ad Account ID benar dan token punya izin ads_management."
-        )
-    acct_name = d2.get('name', ad_account_id)
-    print(f"  Token OK  → user: {user_name}")
-    print(f"  Ad Account → {acct_name} ({ad_account_id})")
-
-
-def upload_all(token, ad_account_id):
-    if not ad_account_id.startswith('act_'):
-        ad_account_id = f"act_{ad_account_id}"
-
-    print("\\nMemverifikasi token...")
-    try:
-        verify_token(token, ad_account_id)
-    except Exception as e:
-        print(f"  ERROR: {e}")
-        print("\\n  Tips:")
-        print("  → Di Meta API v25, upload video butuh System User Token.")
-        print("  → User Token biasa (dari Graph Explorer) tidak cukup permission-nya.")
-        print("  → Ikuti instruksi di atas: buat System User di business.facebook.com/settings")
-        print("  → Pastikan System User sudah ditambahkan ke Ad Account dengan akses Manage.")
-        return
-
-    all_files = [fn for _, fns, _ in CREATIVE_LIST for fn in fns]
-    filename_to_id = {}
-
-    for filename in all_files:
-        filepath = os.path.join(FOLDER, filename)
-        if not os.path.exists(filepath):
-            print(f"  File tidak ditemukan, skip: {filename}")
-            continue
-        ext = os.path.splitext(filename)[1].lower()
-        print(f"\\n[{filename}]")
-        try:
-            if ext == '.mp4':
-                meta_id = upload_video(filepath, filename, token, ad_account_id)
-            else:
-                meta_id = upload_image(filepath, filename, token, ad_account_id)
-            filename_to_id[filename] = meta_id
-            print(f"  ID: {meta_id}")
-        except Exception as e:
-            print(f"  GAGAL: {e}")
-
-    if filename_to_id:
-        print(f"\\nMengupdate {XLSX_FILE}...")
-        update_xlsx(filename_to_id)
+    print(f"\\n✓ {updated} baris diupdate di '{XLSX_FILE}'. Siap diimport ke Meta!")
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
@@ -284,38 +189,24 @@ print(f"\\n{'=' * 55}")
 if errors:
     print(f"  {len(errors)} file gagal didownload.")
 else:
-    print(f"  {total} file berhasil didownload ke folder '{FOLDER}'.")
+    print(f"  Selesai! {total} file tersimpan di folder '{FOLDER}'.")
 print("=" * 55)
 
 print("""
-Step 2: Upload ke Meta & isi Video ID di XLSX otomatis
-  Butuh: System User Token + Ad Account ID dari Meta Business Manager.
+Step 2: Upload ke Meta Media Library & catat Video ID
+  Script ini akan memandu kamu satu per satu.
+  Setelah upload tiap video di Meta, paste Video ID-nya di sini.
+  Video ID bisa dilihat di Media Library → klik video → detail panel.
 
-  Cara dapat System User Token (wajib — User Token biasa tidak cukup di API v25):
-    1. Buka https://business.facebook.com/settings
-    2. Kiri: Users → System Users → klik "+ Add"
-    3. Buat system user dengan role "Admin", catat namanya
-    4. Setelah dibuat, klik system user tersebut → "Add Assets"
-    5. Pilih "Ad Accounts" → centang ad account kamu → beri akses "Manage campaigns"
-    6. Kembali ke halaman system user → klik "Generate New Token"
-    7. Pilih app kamu → centang permission: ads_management → klik Generate Token
-    8. Copy token-nya (panjang, dimulai dengan EAAB... atau format lain)
-
-  Ad Account ID: buka Ads Manager → lihat URL → angka setelah ?act=
-    Contoh: https://adsmanager.facebook.com/...?act=123456789 → ID-nya 123456789
-
-  (Tekan Enter untuk skip dan isi Video ID manual nanti.)
+  (Tekan Enter langsung untuk skip dan isi XLSX manual nanti.)
 """)
 
-token         = getpass.getpass("Meta Access Token  : ").strip()
-ad_account_id = input("Ad Account ID      : ").strip()
-
-if token and ad_account_id:
-    upload_all(token, ad_account_id)
+ans = input("Lanjut ke Step 2? (y/Enter=skip): ").strip().lower()
+if ans == 'y':
+    collect_ids_and_update()
 else:
-    print("Step 2 dilewati.")
-    print(f"Upload video dari folder '{FOLDER}' ke Meta secara manual,")
-    print("lalu isi kolom Video ID di XLSX sebelum import.")
+    print(f"\\nSkip. Upload file dari folder '{FOLDER}' ke Meta secara manual,")
+    print(f"lalu isi kolom Video ID di '{XLSX_FILE}' sebelum import.")
 
 print("\\nSelesai!")
 `;

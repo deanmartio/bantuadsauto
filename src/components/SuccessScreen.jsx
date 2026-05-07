@@ -49,9 +49,9 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
         <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3">Langkah Selanjutnya</p>
         <ol className="space-y-3">
           {[
-            'Pastikan kedua file sudah ada di folder Downloads kamu.',
             'Kirim XLSX dan script Python ke tim KawanBantu — via WhatsApp atau grup chat.',
-            'Tim KawanBantu akan jalankan script → dapat folder berisi video → buka dialog Import di Ads Manager → upload XLSX di bagian File + video di bagian Videos → klik Import.',
+            'Tim KawanBantu jalankan script Python → download semua creative otomatis → upload ke Meta Media Library → paste Video ID satu per satu → XLSX terupdate otomatis.',
+            'Import XLSX ke Ads Manager: hamburger menu → Import & Export → Import Ads.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="w-5 h-5 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
