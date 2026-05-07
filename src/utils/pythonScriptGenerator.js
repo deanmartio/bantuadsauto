@@ -2,8 +2,8 @@ import { getExpandedCreatives, getLocalDateString } from './driveUtils';
 
 export function generatePythonScript(ngoName, adRows) {
   const date = getLocalDateString();
+  const xlsxFilename = `BantuAds_${ngoName}_${date}.xlsx`;
 
-  // Build grouped creative list — folder links grouped so same folder isn't downloaded twice
   const items = [];
   adRows.forEach(row => {
     getExpandedCreatives(row).forEach(({ link, filename, isFolder }) => {
@@ -29,92 +29,253 @@ export function generatePythonScript(ngoName, adRows) {
   return `import os
 import sys
 import shutil
+import getpass
 
 try:
     import gdown
+    import requests
+    import openpyxl
 except ImportError:
-    print("Install dulu: pip install gdown")
+    print("Install dulu: pip install gdown requests openpyxl")
     sys.exit(1)
 
 NGO_NAME  = ${JSON.stringify(ngoName)}
 DATE      = ${JSON.stringify(date)}
 FOLDER    = f"{NGO_NAME}_creatives_{DATE}"
+XLSX_FILE = ${JSON.stringify(xlsxFilename)}
 
-# Each entry: (drive_link, [expected_filenames], is_folder)
 CREATIVE_LIST = [
 ${listItems}
 ]
 
-os.makedirs(FOLDER, exist_ok=True)
-errors = []
+CHUNK_SIZE       = 4 * 1024 * 1024   # 4 MB per chunk
+META_VIDEO_URL   = "https://graph-video.facebook.com/v19.0"
+META_GRAPH_URL   = "https://graph.facebook.com/v19.0"
 
-for drive_link, filenames, is_folder in CREATIVE_LIST:
 
-    if is_folder:
-        print(f"\\nLink folder terdeteksi. Mendownload {len(filenames)} file...")
+# ── STEP 1: Download dari Google Drive ───────────────────────────────────────
 
-        temp_dir = os.path.join(FOLDER, f"_tmp_{filenames[0].replace('.', '_')}")
-        os.makedirs(temp_dir, exist_ok=True)
+def download_all():
+    os.makedirs(FOLDER, exist_ok=True)
+    errors = []
 
-        try:
-            gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
-        except Exception as e:
-            print(f"  ERROR: {e}")
-            errors.extend(filenames)
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            continue
+    for drive_link, filenames, is_folder in CREATIVE_LIST:
+        if is_folder:
+            print(f"\\nLink folder terdeteksi. Mendownload {len(filenames)} file...")
+            temp_dir = os.path.join(FOLDER, f"_tmp_{filenames[0].replace('.', '_')}")
+            os.makedirs(temp_dir, exist_ok=True)
+            try:
+                gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
+            except Exception as e:
+                print(f"  ERROR: {e}")
+                errors.extend(filenames)
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                continue
 
-        downloaded = sorted([
-            f for f in os.listdir(temp_dir)
-            if os.path.isfile(os.path.join(temp_dir, f)) and not f.startswith('.')
-        ])
+            downloaded = sorted([
+                f for f in os.listdir(temp_dir)
+                if os.path.isfile(os.path.join(temp_dir, f)) and not f.startswith('.')
+            ])
 
-        if not downloaded:
-            print("  Tidak ada file yang berhasil didownload.")
-            errors.extend(filenames)
-        else:
-            for i, expected_name in enumerate(filenames):
-                if i < len(downloaded):
-                    os.replace(os.path.join(temp_dir, downloaded[i]),
-                               os.path.join(FOLDER, expected_name))
-                    print(f"  Disimpan sebagai '{expected_name}'")
-                else:
-                    print(f"  PERINGATAN: file ke-{i+1} tidak ada di folder Drive.")
-                    errors.append(expected_name)
-
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-    else:
-        filename = filenames[0]
-        filepath = os.path.join(FOLDER, filename)
-        print(f"Mendownload {filename}...", end=" ", flush=True)
-        try:
-            result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
-            if result:
-                print("Selesai")
+            if not downloaded:
+                print("  Tidak ada file yang berhasil didownload.")
+                errors.extend(filenames)
             else:
-                print("GAGAL (cek apakah link sudah di-set 'Anyone with the link can view')")
+                for i, expected_name in enumerate(filenames):
+                    if i < len(downloaded):
+                        os.replace(os.path.join(temp_dir, downloaded[i]),
+                                   os.path.join(FOLDER, expected_name))
+                        print(f"  Disimpan sebagai '{expected_name}'")
+                    else:
+                        print(f"  PERINGATAN: file ke-{i+1} tidak ada di folder Drive.")
+                        errors.append(expected_name)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        else:
+            filename = filenames[0]
+            filepath = os.path.join(FOLDER, filename)
+            print(f"Mendownload {filename}...", end=" ", flush=True)
+            try:
+                result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
+                print("Selesai" if result else "GAGAL")
+                if not result:
+                    errors.append(filename)
+            except Exception as e:
+                print(f"ERROR: {e}")
                 errors.append(filename)
-        except Exception as e:
-            print(f"ERROR: {e}")
-            errors.append(filename)
 
-total = sum(len(item[1]) for item in CREATIVE_LIST)
-print(f"\\n{'='*55}")
+    return errors
+
+
+# ── STEP 2: Upload ke Meta Media Library ─────────────────────────────────────
+
+def upload_video(filepath, filename, token, ad_account_id):
+    """Resumable (chunked) upload — handles files of any size."""
+    file_size = os.path.getsize(filepath)
+    name      = os.path.splitext(filename)[0]
+
+    # Phase 1: start session
+    r = requests.post(f"{META_VIDEO_URL}/{ad_account_id}/advideos", data={
+        'access_token': token, 'upload_phase': 'start',
+        'file_size': file_size, 'name': name,
+    }, timeout=30)
+    d = r.json()
+    if 'error' in d:
+        raise Exception(d['error'].get('message', str(d['error'])))
+
+    video_id         = d['video_id']
+    session_id       = d['upload_session_id']
+    start_offset     = int(d['start_offset'])
+    end_offset       = int(d['end_offset'])
+
+    # Phase 2: upload chunks
+    with open(filepath, 'rb') as f:
+        while start_offset < file_size:
+            f.seek(start_offset)
+            chunk = f.read(end_offset - start_offset)
+            r = requests.post(f"{META_VIDEO_URL}/{video_id}", data={
+                'access_token': token, 'upload_phase': 'transfer',
+                'upload_session_id': session_id, 'start_offset': start_offset,
+            }, files={'video_file_chunk': chunk}, timeout=300)
+            d = r.json()
+            if 'error' in d:
+                raise Exception(d['error'].get('message', str(d['error'])))
+            start_offset = int(d['start_offset'])
+            end_offset   = int(d['end_offset'])
+            pct = min(100, int(start_offset / file_size * 100))
+            print(f"\\r  Uploading... {pct}%", end="", flush=True)
+
+    # Phase 3: finish
+    r = requests.post(f"{META_VIDEO_URL}/{video_id}", data={
+        'access_token': token, 'upload_phase': 'finish',
+        'upload_session_id': session_id,
+    }, timeout=60)
+    d = r.json()
+    if not d.get('success'):
+        raise Exception(str(d))
+
+    print(f"\\r  Upload selesai (100%)        ")
+    return f"v:{video_id}"
+
+
+def upload_image(filepath, filename, token, ad_account_id):
+    with open(filepath, 'rb') as f:
+        r = requests.post(f"{META_GRAPH_URL}/{ad_account_id}/adimages",
+            data={'access_token': token},
+            files={filename: f}, timeout=120)
+    d = r.json()
+    images = d.get('images', {})
+    if images:
+        return list(images.values())[0].get('hash', '')
+    raise Exception(str(d.get('error', d)))
+
+
+def update_xlsx(filename_to_id):
+    if not os.path.exists(XLSX_FILE):
+        print(f"  '{XLSX_FILE}' tidak ditemukan di folder ini.")
+        print("  Mapping ID (isi manual ke kolom Video ID / Image Hash di XLSX):")
+        for fname, mid in filename_to_id.items():
+            print(f"    {fname}  ->  {mid}")
+        return
+
+    wb   = openpyxl.load_workbook(XLSX_FILE)
+    ws   = wb.active
+    hdrs = [cell.value for cell in ws[1]]
+
+    def colidx(name):
+        try:    return hdrs.index(name) + 1
+        except: return None
+
+    vfn_c  = colidx('Video File Name')
+    vid_c  = colidx('Video ID')
+    ifn_c  = colidx('Image File Name')
+    hash_c = colidx('Image Hash')
+
+    updated = 0
+    for row in ws.iter_rows(min_row=2):
+        if vfn_c and vid_c:
+            v = row[vfn_c - 1].value
+            if v and v in filename_to_id:
+                row[vid_c - 1].value = filename_to_id[v]
+                updated += 1
+        if ifn_c and hash_c:
+            v = row[ifn_c - 1].value
+            if v and v in filename_to_id:
+                row[hash_c - 1].value = filename_to_id[v]
+                updated += 1
+
+    wb.save(XLSX_FILE)
+    print(f"  {updated} baris diupdate. '{XLSX_FILE}' siap diimport ke Meta!")
+
+
+def upload_all(token, ad_account_id):
+    if not ad_account_id.startswith('act_'):
+        ad_account_id = f"act_{ad_account_id}"
+
+    all_files = [fn for _, fns, _ in CREATIVE_LIST for fn in fns]
+    filename_to_id = {}
+
+    for filename in all_files:
+        filepath = os.path.join(FOLDER, filename)
+        if not os.path.exists(filepath):
+            print(f"  File tidak ditemukan, skip: {filename}")
+            continue
+        ext = os.path.splitext(filename)[1].lower()
+        print(f"\\n[{filename}]")
+        try:
+            if ext == '.mp4':
+                meta_id = upload_video(filepath, filename, token, ad_account_id)
+            else:
+                meta_id = upload_image(filepath, filename, token, ad_account_id)
+            filename_to_id[filename] = meta_id
+            print(f"  ID: {meta_id}")
+        except Exception as e:
+            print(f"  GAGAL: {e}")
+
+    if filename_to_id:
+        print(f"\\nMengupdate {XLSX_FILE}...")
+        update_xlsx(filename_to_id)
+
+
+# ── MAIN ─────────────────────────────────────────────────────────────────────
+
+print("=" * 55)
+print("  Step 1: Download creative dari Google Drive")
+print("=" * 55)
+errors = download_all()
+total  = sum(len(item[1]) for item in CREATIVE_LIST)
+
+print(f"\\n{'=' * 55}")
 if errors:
-    print(f"{len(errors)} file gagal didownload: {', '.join(errors)}")
-    print("Pastikan semua link Google Drive sudah di-set ke 'Anyone with the link can view'.")
+    print(f"  {len(errors)} file gagal didownload.")
 else:
-    print(f"Semua {total} file berhasil didownload ke folder '{FOLDER}'.")
-    print()
-    print("Langkah selanjutnya:")
-    print("  1. Buka Ads Manager -> klik ikon Import/Export -> pilih 'Ads' di bawah Import.")
-    print("  2. Di dialog import, ada 3 bagian:")
-    print("       File   -> upload file XLSX")
-    print("       Images -> upload file gambar (jika ada)")
-    print(f"      Videos -> upload file video dari folder '{FOLDER}'")
-    print("  3. Klik Import. Meta akan mencocokkan nama file secara otomatis.")
-    print()
-    print("  CATATAN: Meta membatasi max 10 video per import, masing-masing max 10 MB.")
+    print(f"  {total} file berhasil didownload ke folder '{FOLDER}'.")
+print("=" * 55)
+
+print("""
+Step 2: Upload ke Meta & isi Video ID di XLSX otomatis
+  Butuh: Access Token + Ad Account ID dari Meta.
+
+  Cara dapat Access Token (gratis):
+    1. Buka https://developers.facebook.com/tools/explorer
+    2. Pilih app kamu -> Generate Access Token
+    3. Centang permission: ads_management
+    4. Copy token-nya
+
+  Ad Account ID: lihat URL Ads Manager -> angka setelah ?act=
+
+  (Tekan Enter untuk skip dan isi Video ID manual nanti.)
+""")
+
+token         = getpass.getpass("Meta Access Token  : ").strip()
+ad_account_id = input("Ad Account ID      : ").strip()
+
+if token and ad_account_id:
+    upload_all(token, ad_account_id)
+else:
+    print("Step 2 dilewati.")
+    print(f"Upload video dari folder '{FOLDER}' ke Meta secara manual,")
+    print("lalu isi kolom Video ID di XLSX sebelum import.")
+
+print("\\nSelesai!")
 `;
 }

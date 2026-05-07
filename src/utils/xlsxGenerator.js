@@ -208,10 +208,12 @@ export function generateXLSX(ngoName, adRows) {
 
   let rowIdx = 2;
 
-  // Columns the team must fill in after receiving — highlighted yellow
+  // Columns highlighted yellow — auto-filled by the Python script (Video ID, Image Hash)
+  // or filled manually by the team (Ad Set ID, Ad Set Name, Identity columns)
   const YELLOW_COLS = new Set([
     COL['Ad Set ID'], COL['Ad Set Name'],
     COL['Link Object ID'], COL['Instagram Account ID'],
+    COL['Video ID'], COL['Image Hash'],
   ]);
 
   adRows.forEach(row => {
