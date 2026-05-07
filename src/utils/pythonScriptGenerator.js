@@ -49,8 +49,8 @@ ${listItems}
 ]
 
 CHUNK_SIZE       = 4 * 1024 * 1024   # 4 MB per chunk
-META_VIDEO_URL   = "https://graph-video.facebook.com/v21.0"
-META_GRAPH_URL   = "https://graph.facebook.com/v21.0"
+META_VIDEO_URL   = "https://graph-video.facebook.com/v25.0"
+META_GRAPH_URL   = "https://graph.facebook.com/v25.0"
 
 
 # ── STEP 1: Download dari Google Drive ───────────────────────────────────────
@@ -240,11 +240,11 @@ def upload_all(token, ad_account_id):
         verify_token(token, ad_account_id)
     except Exception as e:
         print(f"  ERROR: {e}")
-        print("\\n  Tips jika ada error 'pages_manage_posts':")
-        print("  → Kamu memakai Page Token, bukan User Token.")
-        print("  → Di Graph API Explorer, pastikan dropdown kanan atas")
-        print("    menampilkan 'User Token', bukan nama halaman Facebook.")
-        print("  → Generate ulang token dengan hanya centang: ads_management")
+        print("\\n  Tips:")
+        print("  → Di Meta API v25, upload video butuh System User Token.")
+        print("  → User Token biasa (dari Graph Explorer) tidak cukup permission-nya.")
+        print("  → Ikuti instruksi di atas: buat System User di business.facebook.com/settings")
+        print("  → Pastikan System User sudah ditambahkan ke Ad Account dengan akses Manage.")
         return
 
     all_files = [fn for _, fns, _ in CREATIVE_LIST for fn in fns]
@@ -289,19 +289,20 @@ print("=" * 55)
 
 print("""
 Step 2: Upload ke Meta & isi Video ID di XLSX otomatis
-  Butuh: Access Token (User Token) + Ad Account ID dari Meta.
+  Butuh: System User Token + Ad Account ID dari Meta Business Manager.
 
-  Cara dapat Access Token:
-    1. Buka https://developers.facebook.com/tools/explorer
-    2. Di dropdown KANAN ATAS — pilih app kamu
-    3. PENTING: pastikan di bawahnya tertulis "User Token"
-       (bukan nama halaman Facebook — itu Page Token, tidak bisa dipakai)
-    4. Klik "Generate Access Token"
-    5. Centang HANYA: ads_management → klik Generate
-    6. Copy token-nya
+  Cara dapat System User Token (wajib — User Token biasa tidak cukup di API v25):
+    1. Buka https://business.facebook.com/settings
+    2. Kiri: Users → System Users → klik "+ Add"
+    3. Buat system user dengan role "Admin", catat namanya
+    4. Setelah dibuat, klik system user tersebut → "Add Assets"
+    5. Pilih "Ad Accounts" → centang ad account kamu → beri akses "Manage campaigns"
+    6. Kembali ke halaman system user → klik "Generate New Token"
+    7. Pilih app kamu → centang permission: ads_management → klik Generate Token
+    8. Copy token-nya (panjang, dimulai dengan EAAB... atau format lain)
 
-  Ad Account ID: buka Ads Manager -> lihat URL -> angka setelah ?act=
-    Contoh: https://adsmanager.facebook.com/...?act=123456789 -> ID-nya 123456789
+  Ad Account ID: buka Ads Manager → lihat URL → angka setelah ?act=
+    Contoh: https://adsmanager.facebook.com/...?act=123456789 → ID-nya 123456789
 
   (Tekan Enter untuk skip dan isi Video ID manual nanti.)
 """)
