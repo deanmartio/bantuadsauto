@@ -54,7 +54,7 @@ for drive_link, filename in CREATIVE_LIST:
         os.makedirs(temp_dir, exist_ok=True)
 
         try:
-            downloaded = gdown.download_folder(
+            gdown.download_folder(
                 drive_link, output=temp_dir, quiet=False, remaining_ok=True
             )
         except Exception as e:
@@ -72,19 +72,20 @@ for drive_link, filename in CREATIVE_LIST:
             print(f"  Tidak ada file yang berhasil didownload dari folder.")
             errors.append(filename)
         elif len(files) == 1:
-            # Single file in folder — rename to expected filename
+            # Single file — rename to expected filename
             src = os.path.join(temp_dir, files[0])
             os.replace(src, filepath)
-            print(f"  ✓ Disimpan sebagai '{filename}'")
+            print(f"  Disimpan sebagai '{filename}'")
         else:
-            # Multiple files — keep original names, warn user
-            for f in files:
-                dest = os.path.join(FOLDER, f)
+            # Multiple files — rename sequentially using the base filename
+            # e.g. Zakat.mp4 -> Zakat 1.mp4, Zakat 2.mp4, Zakat 3.mp4
+            base, ext = os.path.splitext(filename)
+            for i, f in enumerate(files, start=1):
+                new_name = f"{base} {i}{ext}"
+                dest = os.path.join(FOLDER, new_name)
                 os.replace(os.path.join(temp_dir, f), dest)
-            print(f"  ⚠️  {len(files)} file didownload dari folder dengan nama aslinya:")
-            for f in files:
-                print(f"     - {f}")
-            print(f"  Rename secara manual sesuai kebutuhan.")
+                print(f"  Disimpan sebagai '{new_name}'")
+            print(f"  {len(files)} file didownload dari folder.")
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -94,7 +95,7 @@ for drive_link, filename in CREATIVE_LIST:
         try:
             result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
             if result:
-                print(f"✓ Selesai")
+                print(f"Selesai")
             else:
                 print(f"GAGAL (cek apakah link sudah di-set 'Anyone with the link can view')")
                 errors.append(filename)
@@ -104,10 +105,10 @@ for drive_link, filename in CREATIVE_LIST:
 
 print(f"\\n{'='*50}")
 if errors:
-    print(f"⚠️  {len(errors)} file gagal didownload: {', '.join(errors)}")
+    print(f"{len(errors)} file gagal didownload: {', '.join(errors)}")
     print("Pastikan semua link Google Drive sudah di-set ke 'Anyone with the link can view'.")
 else:
-    print(f"✓ Semua {len(CREATIVE_LIST)} file berhasil didownload ke folder '{FOLDER}'.")
+    print(f"Semua file berhasil didownload ke folder '{FOLDER}'.")
     print("Zip folder ini lalu upload ke Meta Media Library.")
 `;
 }
