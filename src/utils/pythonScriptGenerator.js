@@ -131,21 +131,37 @@ def fetch_meta_ids(token, ad_account_id):
     # ── Videos ───────────────────────────────────────────────────────────────
     if videos:
         print("  Mengambil daftar video dari Media Library...", end=" ", flush=True)
-        video_map = {}   # title (no ext) → "v:ID"
-        for v in paginate(f"{META_URL}/{ad_account_id}/advideos",
-                          {'access_token': token, 'fields': 'id,title', 'limit': 100}):
-            if 'title' in v:
-                video_map[v['title']] = f"v:{v['id']}"
-        print(f"{len(video_map)} video ditemukan.")
+        all_video_data = list(paginate(f"{META_URL}/{ad_account_id}/advideos",
+                          {'access_token': token, 'fields': 'id,title,created_time', 'limit': 100}))
+        print(f"{len(all_video_data)} video ditemukan.")
 
-        # Expected video titles = filename without extension
+        # Build lookup: both exact title and lowercased, with and without .mp4
+        video_map = {}
+        for v in all_video_data:
+            raw = v.get('title', '')
+            meta_id = f"v:{v['id']}"
+            for key in [raw, raw.lower(), os.path.splitext(raw)[0], os.path.splitext(raw)[0].lower()]:
+                if key:
+                    video_map[key] = meta_id
+
+        # Show 8 most recently uploaded titles so user can see exact format
+        recent = sorted(all_video_data, key=lambda x: x.get('created_time',''), reverse=True)[:8]
+        print("  8 video terbaru di Media Library:")
+        for v in recent:
+            print(f"    title={repr(v.get('title',''))}  id=v:{v['id']}")
+
+        # Match: try filename without ext, lowercased, and with ext
         for filename in videos:
-            title = os.path.splitext(filename)[0]
-            if title in video_map:
-                filename_to_id[filename] = video_map[title]
-                print(f"  ✓ {filename}  →  {video_map[title]}")
+            stem  = os.path.splitext(filename)[0]          # Braille_1
+            found = (video_map.get(stem) or
+                     video_map.get(stem.lower()) or
+                     video_map.get(filename) or
+                     video_map.get(filename.lower()))
+            if found:
+                filename_to_id[filename] = found
+                print(f"  ✓ {filename}  →  {found}")
             else:
-                print(f"  ✗ {filename}  — tidak ditemukan di Media Library (belum diupload?)")
+                print(f"  ✗ {filename}  — tidak cocok. Cek format title di atas.")
 
     # ── Images ───────────────────────────────────────────────────────────────
     if images:
