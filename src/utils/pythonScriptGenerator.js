@@ -29,6 +29,7 @@ export function generatePythonScript(ngoName, adRows) {
   return `import os
 import sys
 import shutil
+import webbrowser
 
 try:
     import gdown
@@ -203,6 +204,12 @@ Step 2: Upload ke Meta Media Library & catat Video ID
 
 ans = input("Lanjut ke Step 2? (y/Enter=skip): ").strip().lower()
 if ans == 'y':
+    print("\\nMembuka Meta Media Library di browser...")
+    webbrowser.open("https://adsmanager.facebook.com/adsmanager/manage/images")
+    print("Upload semua file .mp4 dari folder berikut:")
+    print(f"  📁 {os.path.abspath(FOLDER)}")
+    print("Setelah selesai upload, kembali ke sini dan masukkan Video ID-nya.\\n")
+    input("Tekan Enter setelah semua video selesai diupload...")
     collect_ids_and_update()
 else:
     print(f"\\nSkip. Upload file dari folder '{FOLDER}' ke Meta secara manual,")
