@@ -209,9 +209,12 @@ export function generateXLSX(ngoName, adRows) {
   let rowIdx = 2;
 
   // Columns the team must fill in after receiving — highlighted yellow
+  // Video ID / Image Hash are assigned by Meta on media upload and cannot be known in advance.
+  // The team uploads the media, gets the IDs from Meta Media Library, then fills these cells.
   const YELLOW_COLS = new Set([
     COL['Ad Set ID'], COL['Ad Set Name'],
     COL['Link Object ID'], COL['Instagram Account ID'],
+    COL['Video ID'], COL['Image Hash'],
   ]);
 
   adRows.forEach(row => {
