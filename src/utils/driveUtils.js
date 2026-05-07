@@ -8,8 +8,10 @@ export function isFolderLink(link) {
 
 export function buildCreativeFilename(adName, creativeIndex, totalCreatives, type) {
   const ext = getFileExtension(type);
-  if (totalCreatives === 1) return `${adName}${ext}`;
-  return `${adName} ${creativeIndex + 1}${ext}`;
+  // Use underscores — spaces in filenames cause Meta media library matching failures
+  const safeName = adName.trim().replace(/\s+/g, '_');
+  if (totalCreatives === 1) return `${safeName}${ext}`;
+  return `${safeName}_${creativeIndex + 1}${ext}`;
 }
 
 export function buildAdName(adName, creativeIndex, totalCreatives) {
