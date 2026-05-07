@@ -229,6 +229,7 @@ export function generateXLSX(ngoName, adRows) {
       });
 
       // Per-row variable values
+      rowData[COL['Ad Set Name']] = ngoName;   // Required by Meta — team can override
       rowData[COL['Link']]      = row.campaignLink;
       rowData[COL['Ad Name']]   = adName;
       rowData[COL['Title']]     = titleValue;
