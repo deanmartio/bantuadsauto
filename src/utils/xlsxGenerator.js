@@ -192,8 +192,8 @@ const FIXED = {
   'Call to Action':                             'LEARN_MORE',
   'Additional Custom Tracking Specs':           '[]',
   'Video Retargeting':                          'No',
-  'Link Object ID':                             'o:111012251025290',   // KawanBantu FB Page
-  'Instagram Account ID':                       'x:3941374329242696',  // KawanBantu IG
+  'Link Object ID':                             'o:280665741793941',   // KawanBantu FB Page
+  'Instagram Account ID':                       'x:17841465943476546', // KawanBantu IG
   'Use Page as Actor':                          'No',
   'Creative Destination Type':                  'WEBSITE',
   'Degrees of Freedom Type':                    'USER_ENROLLED_AUTOFLOW',
@@ -236,7 +236,7 @@ export function generateXLSX(ngoName, adRows) {
       // Per-row variable values
       const destUrl = (row.campaignLink || '').trim();
       rowData[COL['Ad Set Name']]        = ngoName;   // Required; team can rename
-      rowData[COL['Call to Action Link']] = destUrl;  // Ad creative destination URL
+      rowData[COL['Link']]               = destUrl;   // Website URL (main destination)
       rowData[COL['Ad Name']]            = adName;
       rowData[COL['Title']]              = titleValue;
       rowData[COL['Body']]               = bodyValue;
