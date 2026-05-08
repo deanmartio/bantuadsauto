@@ -192,6 +192,8 @@ const FIXED = {
   'Call to Action':                             'LEARN_MORE',
   'Additional Custom Tracking Specs':           '[]',
   'Video Retargeting':                          'No',
+  'Link Object ID':                             'o:111012251025290',   // KawanBantu FB Page
+  'Instagram Account ID':                       'x:3941374329242696',  // KawanBantu IG
   'Use Page as Actor':                          'No',
   'Creative Destination Type':                  'WEBSITE',
   'Degrees of Freedom Type':                    'USER_ENROLLED_AUTOFLOW',
@@ -213,7 +215,6 @@ export function generateXLSX(ngoName, adRows) {
   // or filled manually by the team (Ad Set ID, Ad Set Name, Identity columns)
   const YELLOW_COLS = new Set([
     COL['Ad Set ID'], COL['Ad Set Name'],
-    COL['Link Object ID'], COL['Instagram Account ID'],
     COL['Video ID'], COL['Image Hash'],
   ]);
 
