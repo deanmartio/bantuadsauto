@@ -166,7 +166,7 @@ const FIXED = {
   'Buy With Integration Partner':               'NONE',
   'Ad Set Run Status':                          'ACTIVE',
   'Ad Set Lifetime Impressions':                '0',
-  'Destination Type':                           'UNDEFINED',
+  'Destination Type':                           'WEBSITE',
   'Use Accelerated Delivery':                   'No',
   'Is Budget Scheduling Enabled For Ad Set':    'No',
   'Ad Set High Demand Periods':                 '[]',
