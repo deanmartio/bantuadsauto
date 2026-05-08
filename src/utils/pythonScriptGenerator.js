@@ -186,23 +186,36 @@ def fetch_meta_ids(token, ad_account_id):
     return filename_to_id
 
 
-def write_xlsx(filename_to_id):
-    if not filename_to_id:
-        print("\\nTidak ada ID yang cocok ditemukan. XLSX tidak diupdate.")
-        return
+def resolve_path(raw):
+    """Strip shell escaping and quotes from a drag-and-dropped path."""
+    import shlex
+    raw = raw.strip()
+    try:
+        parts = shlex.split(raw)
+        if parts:
+            return parts[0]
+    except Exception:
+        pass
+    # fallback: strip common shell escapes manually
+    return raw.replace('\\ ', ' ').replace('\\(', '(').replace('\\)', ')').replace('\\&', '&').strip("'\"")
 
-    xlsx_path = XLSX_FILE
-    if not os.path.exists(xlsx_path):
+
+def find_xlsx():
+    """Return a valid XLSX path, retrying until the user provides one."""
+    if os.path.exists(XLSX_FILE):
+        return XLSX_FILE
+    while True:
         print(f"\\n'{XLSX_FILE}' tidak ditemukan di folder script ini.")
-        print("Masukkan path lengkap ke file XLSX (atau drag & drop file ke terminal ini):")
-        user_path = input("  Path XLSX: ").strip().strip("'\\\"")
-        if not user_path or not os.path.exists(user_path):
-            print("  File tidak ditemukan. Mapping ID yang sudah didapat:")
-            for fname, mid in filename_to_id.items():
-                print(f"    {fname}  →  {mid}")
-            return
-        xlsx_path = user_path
+        print("Drag & drop file XLSX ke terminal ini, lalu tekan Enter:")
+        raw = input("  Path XLSX: ")
+        path = resolve_path(raw)
+        if os.path.exists(path):
+            return path
+        print(f"  File tidak ditemukan: '{path}'")
+        print("  Pastikan path benar dan coba lagi.")
 
+
+def write_xlsx(filename_to_id, xlsx_path):
     wb   = openpyxl.load_workbook(xlsx_path)
     ws   = wb.active
     hdrs = [cell.value for cell in ws[1]]
@@ -248,10 +261,10 @@ else:
     print(f"  Selesai! {total} file tersimpan di folder '{FOLDER}'.")
 print("=" * 55)
 
+AD_ACCOUNT_ID = "act_1593004558017073"
+
 print(f"""
 Step 2: Upload video ke Meta, lalu script otomatis ambil Video ID-nya.
-
-  Lakukan langkah ini SEBELUM ketik y:
 
   [1] Upload semua file dari folder ini ke Meta Media Library:
         📁 {os.path.abspath(FOLDER)}
@@ -262,13 +275,7 @@ Step 2: Upload video ke Meta, lalu script otomatis ambil Video ID-nya.
       → Dropdown kanan atas: pilih app kamu, pastikan tertulis "User Token"
       → Klik "Generate Access Token" → centang ads_read → Generate → Copy
 
-  [3] Siapkan Ad Account ID:
-      → Buka Ads Manager, lihat URL-nya
-      → Cari angka setelah ?act= → itulah Ad Account ID kamu
-      → Contoh: ?act=1234567890 → ID-nya adalah 1234567890
-
-  Setelah ketiga langkah di atas selesai, ketik y lalu Enter.
-  Script akan otomatis ambil semua Video ID dan isi XLSX.
+  Setelah kedua langkah di atas selesai, ketik y lalu Enter.
   (Enter saja = skip, isi XLSX manual nanti.)
 """)
 
@@ -279,14 +286,28 @@ if ans != 'y':
     print("\\nSelesai!")
     sys.exit(0)
 
-token         = getpass.getpass("Access Token   : ").strip()
-ad_account_id = input("Ad Account ID  : ").strip()
+# ── Token input with validation loop ─────────────────────────────────────────
+while True:
+    token = getpass.getpass("Access Token: ").strip()
+    if not token:
+        print("  Token tidak boleh kosong. Coba lagi.")
+        continue
+    print("  Memvalidasi token...", end=" ", flush=True)
+    try:
+        r = requests.get(f"{META_URL}/me", params={'access_token': token, 'fields': 'name'}, timeout=15)
+        d = r.json()
+        if 'error' in d:
+            print(f"GAGAL\\n  {d['error'].get('message', str(d['error']))}")
+            print("  Generate token baru dan coba lagi.")
+            continue
+        print(f"OK ({d.get('name', '')})")
+        break
+    except Exception as e:
+        print(f"GAGAL\\n  Koneksi error: {e}")
+        print("  Cek koneksi internet dan coba lagi.")
+        continue
 
-if not token or not ad_account_id:
-    print("Token atau Ad Account ID kosong. Step 2 dilewati.")
-    print("\\nSelesai!")
-    sys.exit(0)
-
+# ── Open browser & wait for upload ───────────────────────────────────────────
 print("\\nMembuka Meta Media Library di browser...")
 webbrowser.open("https://adsmanager.facebook.com/adsmanager/manage/images")
 print(f"Upload semua file dari folder ini ke Media Library:")
@@ -294,13 +315,48 @@ print(f"  📁 {os.path.abspath(FOLDER)}")
 print("Pastikan nama file tidak berubah saat upload.\\n")
 input("Tekan Enter setelah semua file selesai diupload di browser...")
 
-print("\\nMengambil ID dari Meta Media Library...")
-try:
-    filename_to_id = fetch_meta_ids(token, ad_account_id)
-    write_xlsx(filename_to_id)
-except Exception as e:
-    print(f"\\nERROR: {e}")
-    print("Coba cek: apakah token masih valid? Apakah Ad Account ID benar?")
+# ── Fetch IDs with retry loop ─────────────────────────────────────────────────
+while True:
+    print("\\nMengambil ID dari Meta Media Library...")
+    try:
+        filename_to_id = fetch_meta_ids(token, AD_ACCOUNT_ID)
+        break
+    except Exception as e:
+        print(f"  ERROR: {e}")
+        print("  Pilihan:")
+        print("  [r] Coba lagi dengan token baru")
+        print("  [s] Skip — cetak ID yang sudah didapat dan lanjut")
+        choice = input("  Pilihan (r/s): ").strip().lower()
+        if choice == 's':
+            filename_to_id = {}
+            break
+        # re-enter token
+        while True:
+            token = getpass.getpass("  Access Token baru: ").strip()
+            if not token:
+                print("  Token tidak boleh kosong.")
+                continue
+            print("  Memvalidasi...", end=" ", flush=True)
+            try:
+                r = requests.get(f"{META_URL}/me", params={'access_token': token, 'fields': 'name'}, timeout=15)
+                d = r.json()
+                if 'error' in d:
+                    print(f"GAGAL: {d['error'].get('message', '')}")
+                    continue
+                print(f"OK ({d.get('name', '')})")
+                break
+            except Exception as e2:
+                print(f"GAGAL: {e2}")
+                continue
+
+if not filename_to_id:
+    print("\\nTidak ada ID yang cocok. XLSX tidak diupdate.")
+    print("\\nSelesai!")
+    sys.exit(0)
+
+# ── Find XLSX with retry loop ─────────────────────────────────────────────────
+xlsx_path = find_xlsx()
+write_xlsx(filename_to_id, xlsx_path)
 
 print("\\nSelesai!")
 `;
