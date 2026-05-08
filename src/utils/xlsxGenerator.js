@@ -155,12 +155,12 @@ HEADERS.forEach((h, i) => { COL[h] = i; });
 const FIXED = {
   'Campaign ID':                                'cg:120241454085740254',
   'Campaign Name':                              'BANTUADS CAMPAIGNS',
+  'Special Ad Categories':                      'None',
   'Campaign Status':                            'ACTIVE',
   'Campaign Objective':                         'Outcome Sales',
   'Buying Type':                                'AUCTION',
   'Campaign Bid Strategy':                      'Highest volume or value',
   'New Objective':                              'Yes',
-  'Buy With Prime Type':                        'NONE',
   'Is Budget Scheduling Enabled For Campaign':  'No',
   'Campaign High Demand Periods':               '[]',
   'Buy With Integration Partner':               'NONE',
@@ -235,7 +235,8 @@ export function generateXLSX(ngoName, adRows) {
       // Per-row variable values
       const destUrl = (row.campaignLink || '').trim();
       rowData[COL['Ad Set Name']]        = ngoName;   // Required; team can rename
-      rowData[COL['Link']]               = destUrl;   // Website URL (main destination)
+      rowData[COL['Link']]               = destUrl;   // Website URL (ad-set level)
+      rowData[COL['Call to Action Link']] = destUrl;  // Website URL (ad level)
       rowData[COL['Ad Name']]            = adName;
       rowData[COL['Title']]              = titleValue;
       rowData[COL['Body']]               = bodyValue;
