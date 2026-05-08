@@ -193,6 +193,7 @@ const FIXED = {
   'Additional Custom Tracking Specs':           '[]',
   'Video Retargeting':                          'No',
   'Use Page as Actor':                          'No',
+  'Creative Destination Type':                  'WEBSITE',
   'Degrees of Freedom Type':                    'USER_ENROLLED_AUTOFLOW',
 };
 
@@ -232,9 +233,9 @@ export function generateXLSX(ngoName, adRows) {
       });
 
       // Per-row variable values
-      rowData[COL['Ad Set Name']]        = ngoName;            // Required; team can rename
-      rowData[COL['Link']]               = row.campaignLink;   // Ad-set level link
-      rowData[COL['Call to Action Link']] = row.campaignLink;  // Ad creative destination URL
+      const destUrl = (row.campaignLink || '').trim();
+      rowData[COL['Ad Set Name']]        = ngoName;   // Required; team can rename
+      rowData[COL['Call to Action Link']] = destUrl;  // Ad creative destination URL
       rowData[COL['Ad Name']]            = adName;
       rowData[COL['Title']]              = titleValue;
       rowData[COL['Body']]               = bodyValue;
