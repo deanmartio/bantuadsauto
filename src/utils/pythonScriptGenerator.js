@@ -196,8 +196,10 @@ def resolve_path(raw):
             return parts[0]
     except Exception:
         pass
-    # fallback: strip common shell escapes manually
-    return raw.replace('\\ ', ' ').replace('\\(', '(').replace('\\)', ')').replace('\\&', '&').strip("'\"")
+    # fallback: strip surrounding quotes only
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in (chr(34), chr(39)):
+        raw = raw[1:-1]
+    return raw
 
 
 def find_xlsx():
