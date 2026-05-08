@@ -166,7 +166,7 @@ const FIXED = {
   'Buy With Integration Partner':               'NONE',
   'Ad Set Run Status':                          'ACTIVE',
   'Ad Set Lifetime Impressions':                '0',
-  'Destination Type':                           'WEBSITE',
+  'Destination Type':                           'UNDEFINED',
   'Use Accelerated Delivery':                   'No',
   'Is Budget Scheduling Enabled For Ad Set':    'No',
   'Ad Set High Demand Periods':                 '[]',
@@ -193,9 +193,8 @@ const FIXED = {
   'Additional Custom Tracking Specs':           '[]',
   'Video Retargeting':                          'No',
   'Link Object ID':                             'o:280665741793941',   // KawanBantu FB Page
-  'Instagram Account ID':                       'x:17841465943476546', // KawanBantu IG
+  'Instagram Account ID':                       'x:25354189687559569', // KawanBantu IG
   'Use Page as Actor':                          'No',
-  'Creative Destination Type':                  'WEBSITE',
   'Degrees of Freedom Type':                    'USER_ENROLLED_AUTOFLOW',
 };
 
