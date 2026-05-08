@@ -191,15 +191,19 @@ def write_xlsx(filename_to_id):
         print("\\nTidak ada ID yang cocok ditemukan. XLSX tidak diupdate.")
         return
 
-    if not os.path.exists(XLSX_FILE):
-        print(f"\\n'{XLSX_FILE}' tidak ditemukan di folder ini.")
-        print("Pastikan file XLSX ada di folder yang sama dengan script ini.")
-        print("\\nMapping ID yang ditemukan:")
-        for fname, mid in filename_to_id.items():
-            print(f"  {fname}  →  {mid}")
-        return
+    xlsx_path = XLSX_FILE
+    if not os.path.exists(xlsx_path):
+        print(f"\\n'{XLSX_FILE}' tidak ditemukan di folder script ini.")
+        print("Masukkan path lengkap ke file XLSX (atau drag & drop file ke terminal ini):")
+        user_path = input("  Path XLSX: ").strip().strip("'\\\"")
+        if not user_path or not os.path.exists(user_path):
+            print("  File tidak ditemukan. Mapping ID yang sudah didapat:")
+            for fname, mid in filename_to_id.items():
+                print(f"    {fname}  →  {mid}")
+            return
+        xlsx_path = user_path
 
-    wb   = openpyxl.load_workbook(XLSX_FILE)
+    wb   = openpyxl.load_workbook(xlsx_path)
     ws   = wb.active
     hdrs = [cell.value for cell in ws[1]]
 
@@ -225,8 +229,8 @@ def write_xlsx(filename_to_id):
                 row[hash_c - 1].value = filename_to_id[v]
                 updated += 1
 
-    wb.save(XLSX_FILE)
-    print(f"\\n✓ {updated} baris diupdate di '{XLSX_FILE}'. Siap diimport ke Meta!")
+    wb.save(xlsx_path)
+    print(f"\\n✓ {updated} baris diupdate di '{xlsx_path}'. Siap diimport ke Meta!")
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
