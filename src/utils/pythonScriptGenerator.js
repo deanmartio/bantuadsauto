@@ -356,9 +356,16 @@ if not filename_to_id:
     print("\\nSelesai!")
     sys.exit(0)
 
-# ── Find XLSX with retry loop ─────────────────────────────────────────────────
+# ── Find XLSX with retry loop + re-apply to another file ─────────────────────
 xlsx_path = find_xlsx()
 write_xlsx(filename_to_id, xlsx_path)
+
+while True:
+    again = input("\\nApply Video ID yang sama ke file XLSX lain? (y/Enter=tidak): ").strip().lower()
+    if again != 'y':
+        break
+    xlsx_path2 = find_xlsx()
+    write_xlsx(filename_to_id, xlsx_path2)
 
 print("\\nSelesai!")
 `;
