@@ -44,14 +44,21 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
         </div>
       </div>
 
+      {/* Primary CTA — send the files */}
+      <div className="w-full bg-[#2A9E99] rounded-2xl p-5 mb-4 text-left">
+        <p className="text-xs font-bold text-white/70 uppercase tracking-wide mb-1">Langkah Pertama</p>
+        <p className="text-white font-bold text-base mb-1">Kirim 2 file ini ke tim KawanBantu</p>
+        <p className="text-white/80 text-xs">via WhatsApp atau grup chat. Kedua file wajib dikirim.</p>
+      </div>
+
       {/* Next step card */}
       <div className="w-full bg-[#FFFBF2] border border-yellow-200 rounded-2xl p-5 mb-8 text-left">
-        <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3">Langkah Selanjutnya</p>
+        <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3">Selanjutnya (dikerjakan tim KawanBantu)</p>
         <ol className="space-y-3">
           {[
-            'Kirim XLSX dan script Python ke tim KawanBantu — via WhatsApp atau grup chat.',
-            'Tim KawanBantu jalankan script Python → download semua creative otomatis → upload ke Meta Media Library → paste Video ID satu per satu → XLSX terupdate otomatis.',
-            'Import XLSX ke Ads Manager: hamburger menu → Import & Export → Import Ads.',
+            'Jalankan script Python → download semua creative dari Google Drive otomatis.',
+            'Upload creative ke Meta Media Library → script ambil Video ID otomatis → XLSX terupdate.',
+            'Import XLSX ke Ads Manager: ☰ → Import & Export → Import Ads.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="w-5 h-5 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">

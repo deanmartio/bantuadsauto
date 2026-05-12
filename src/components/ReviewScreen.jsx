@@ -1,9 +1,16 @@
+import { useState } from 'react';
 import { validate, getDuplicateAdNames } from '../utils/validation';
+import { getLocalDateString } from '../utils/driveUtils';
 
 export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
   const { errors, hasDuplicates } = validate(ngoName, adRows);
   const hasErrors = errors.length > 0;
   const duplicateNames = getDuplicateAdNames(adRows);
+  const [showModal, setShowModal] = useState(false);
+
+  const date = getLocalDateString();
+  const xlsxFilename = `BantuAds_${ngoName}_${date}.xlsx`;
+  const pyFilename = `download_creatives_${ngoName}_${date}.py`;
 
   return (
     <div className="max-w-3xl mx-auto pb-24">
@@ -117,7 +124,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
         </button>
         <button
           type="button"
-          onClick={onExport}
+          onClick={() => !hasErrors && setShowModal(true)}
           disabled={hasErrors}
           className="text-white font-bold rounded-xl px-6 py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           style={{ background: hasErrors ? '#9ca3af' : 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
@@ -125,6 +132,61 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
           Export Sekarang
         </button>
       </div>
+
+      {/* Pre-download modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto"
+              style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}>
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </div>
+
+            <h2 className="text-lg font-bold text-[#2B2033] text-center mb-1">2 File Akan Diunduh</h2>
+            <p className="text-xs text-gray-500 text-center mb-4">
+              Kedua file ini harus dikirim ke tim KawanBantu via WhatsApp.
+            </p>
+
+            <div className="bg-[#F7F2EA] rounded-xl p-3 mb-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center shrink-0 text-green-700 text-xs font-bold">XL</span>
+                <span className="text-xs font-semibold text-[#2B2033] break-all">{xlsxFilename}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 text-xs font-bold">PY</span>
+                <span className="text-xs font-semibold text-[#2B2033] break-all">{pyFilename}</span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-5 flex gap-2">
+              <span className="text-amber-500 text-base shrink-0">⚠️</span>
+              <p className="text-xs text-amber-800">
+                Jika Chrome memunculkan popup <strong>"Izinkan download multiple file?"</strong> — klik <strong>Izinkan</strong>. Kedua file harus berhasil terunduh.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex-1 border-2 border-gray-200 text-gray-500 font-semibold rounded-xl py-2.5 text-sm hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowModal(false); onExport(); }}
+                className="flex-1 text-white font-bold rounded-xl py-2.5 text-sm"
+                style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
+              >
+                Download Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
