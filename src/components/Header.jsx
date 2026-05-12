@@ -4,7 +4,7 @@ export default function Header() {
       <img
         src="/logo.png"
         alt="BantuAds"
-        style={{ height: '72px', width: '72px', objectFit: 'contain', borderRadius: '12px' }}
+        style={{ height: '180px', width: '180px', objectFit: 'contain', borderRadius: '16px' }}
       />
     </header>
   );
