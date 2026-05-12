@@ -1,4 +1,4 @@
-export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onEdit }) {
+export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onEdit, onReDownload }) {
 
   return (
     <div className="max-w-xl mx-auto pt-10 pb-24 flex flex-col items-center text-center">
@@ -72,6 +72,17 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
 
       {/* CTA buttons */}
       <div className="w-full flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={onReDownload}
+          className="w-full flex items-center justify-center gap-2 text-white font-bold rounded-xl px-6 py-3 text-sm transition-opacity"
+          style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Download Ulang 2 File
+        </button>
         <button
           type="button"
           onClick={onEdit}

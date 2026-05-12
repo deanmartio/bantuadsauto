@@ -107,6 +107,16 @@ export default function App() {
     }, 500);
   }
 
+  function handleReDownload() {
+    const date = getLocalDateString();
+    const pyFilename = `download_creatives_${ngoName}_${date}.py`;
+    const pyContent = generatePythonScript(ngoName, adRows);
+    const pyBlob = new Blob([pyContent], { type: 'text/plain' });
+    const { blob: xlsxBlob, filename: xlsxFilename } = generateXLSX(ngoName, adRows);
+    triggerDownload(pyBlob, pyFilename);
+    setTimeout(() => triggerDownload(xlsxBlob, xlsxFilename), 400);
+  }
+
   function handleStartOver() {
     nextId = 1;
     setNgoName('');
@@ -174,6 +184,7 @@ export default function App() {
             exportedFiles={exportedFiles}
             onStartOver={handleStartOver}
             onEdit={() => setScreen('form')}
+            onReDownload={handleReDownload}
           />
         )}
       </main>
