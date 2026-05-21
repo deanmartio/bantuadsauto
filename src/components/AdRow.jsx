@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import CreativeInput from './CreativeInput';
 import TextVariantInput from './TextVariantInput';
+import DriveGuideModal from './DriveGuideModal';
 
 export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, onDelete }) {
+  const [showDriveGuide, setShowDriveGuide] = useState(false);
   function updateField(field, value) {
     onUpdate(index, { ...row, [field]: value });
   }
@@ -85,9 +88,22 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
 
         {/* Creatives */}
         <div className="lg:col-span-4">
-          <label className="block text-sm font-semibold text-[#2B2033] mb-1">
-            Creatives <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-[#2B2033]">
+              Creatives <span className="text-red-500">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowDriveGuide(true)}
+              className="flex items-center gap-1 text-[10.5px] font-semibold text-[#2A9E99] hover:text-[#8A59B3] transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Panduan Upload Link Drive
+            </button>
+          </div>
+          {showDriveGuide && <DriveGuideModal onClose={() => setShowDriveGuide(false)} />}
           {row.creatives.map((creative, ci) => (
             <CreativeInput
               key={ci}

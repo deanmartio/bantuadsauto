@@ -2,11 +2,12 @@ import { isFolderLink } from '../utils/driveUtils';
 
 export default function CreativeInput({ creative, index, total, onUpdate, onRemove }) {
   const isFolder = isFolderLink(creative.link);
+  const hasLink = creative.link.trim().length > 0;
 
   return (
     <div className="border border-gray-200 rounded-lg p-2.5 mb-2 bg-gray-50">
       {/* URL row */}
-      <div className="flex items-center gap-1.5 mb-2">
+      <div className="flex items-center gap-1.5 mb-1.5">
         <span className="text-xs font-semibold text-gray-400 w-5 shrink-0 text-center">#{index + 1}</span>
         <input
           type="url"
@@ -17,19 +18,37 @@ export default function CreativeInput({ creative, index, total, onUpdate, onRemo
         />
       </div>
 
+      {/* Always-visible content rule hint */}
+      <p className="pl-6 text-[10.5px] text-gray-400 mb-2 leading-snug">
+        Link harus mengarah langsung ke <span className="font-semibold text-gray-500">file video/gambar</span> atau{' '}
+        <span className="font-semibold text-gray-500">folder yang isinya HANYA file siap pakai</span> — bukan folder
+        yang berisi folder lain.
+      </p>
+
       {/* Folder file-count notice */}
       {isFolder && (
-        <div className="flex items-center gap-2 pl-6 mb-2">
-          <span className="text-xs text-amber-600 font-semibold">📁 Link folder —</span>
-          <label className="text-xs text-amber-600">berapa file di dalamnya?</label>
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={creative.count || 1}
-            onChange={e => onUpdate(index, 'count', Math.max(1, parseInt(e.target.value) || 1))}
-            className="w-14 border border-amber-300 rounded-md px-2 py-0.5 text-xs text-center font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50"
-          />
+        <div className="pl-6 mb-2">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-xs font-bold text-amber-700 mb-1.5">
+              📁 Link Folder Terdeteksi — Wajib Diisi
+            </p>
+            <p className="text-[10.5px] text-amber-600 mb-2 leading-snug">
+              Hitung jumlah file (video/gambar) yang ada <span className="font-semibold">langsung di dalam folder ini</span>.
+              Jangan hitung sub-folder. Script akan mendownload file ke-1, ke-2, … sesuai urutan di Drive.
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-amber-700">Jumlah file dalam folder:</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={creative.count || 1}
+                onChange={e => onUpdate(index, 'count', Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-16 border border-amber-300 rounded-md px-2 py-1 text-xs text-center font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+              />
+              <span className="text-xs text-amber-600">file</span>
+            </div>
+          </div>
         </div>
       )}
 

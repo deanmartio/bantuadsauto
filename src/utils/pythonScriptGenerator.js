@@ -93,7 +93,7 @@ def download_all():
             filepath = os.path.join(FOLDER, filename)
             print(f"Mendownload {filename}...", end=" ", flush=True)
             try:
-                result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
+                result = gdown.download(drive_link, filepath, quiet=False)
                 print("Selesai" if result else "GAGAL")
                 if not result:
                     errors.append(filename)
@@ -211,6 +211,9 @@ def find_xlsx():
         print("Drag & drop file XLSX ke terminal ini, lalu tekan Enter:")
         raw = input("  Path XLSX: ")
         path = resolve_path(raw)
+        if not path.lower().endswith('.xlsx'):
+            print(f"  File ini bukan XLSX — drag file .xlsx yang benar.")
+            continue
         if os.path.exists(path):
             return path
         print(f"  File tidak ditemukan: '{path}'")
