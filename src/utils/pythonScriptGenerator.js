@@ -28,6 +28,7 @@ export function generatePythonScript(ngoName, adRows) {
 
   return `import os
 import sys
+import re
 import shutil
 import webbrowser
 import getpass
@@ -40,7 +41,7 @@ except ImportError:
     print("Install dulu: pip install gdown requests openpyxl")
     sys.exit(1)
 
-NGO_NAME   = ${JSON.stringify(ngoName)}
+NGO_NAME   = ${JSON.stringify(ngoName.trim())}
 DATE       = ${JSON.stringify(date)}
 FOLDER     = f"{NGO_NAME}_creatives_{DATE}"
 XLSX_FILE  = ${JSON.stringify(xlsxFilename)}
@@ -60,7 +61,8 @@ def download_all():
     for drive_link, filenames, is_folder in CREATIVE_LIST:
         if is_folder:
             print(f"\\nLink folder terdeteksi. Mendownload {len(filenames)} file...")
-            temp_dir = os.path.join(FOLDER, f"_tmp_{filenames[0].replace('.', '_')}")
+            _safe = re.sub(r'[\\\\/:*?"<>|]', '_', filenames[0]).replace('.', '_')[:40]
+            temp_dir = os.path.join(FOLDER, f"_tmp_{_safe}")
             os.makedirs(temp_dir, exist_ok=True)
             try:
                 gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
