@@ -29,6 +29,7 @@ export function generatePythonScript(ngoName, adRows) {
   return `import os
 import sys
 import re
+import time
 import shutil
 import webbrowser
 import getpass
@@ -64,26 +65,42 @@ def download_all():
             _safe = re.sub(r'[\\\\/:*?"<>|]', '_', filenames[0]).replace('.', '_')[:40]
             temp_dir = os.path.join(FOLDER, f"_tmp_{_safe}")
             os.makedirs(temp_dir, exist_ok=True)
-            try:
-                gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
-            except Exception as e:
-                err_str = str(e)
-                print(f"  ERROR: {e}")
-                if "owner and editors" in err_str or "Access denied" in err_str or "permission" in err_str.lower():
-                    print()
-                    print("  ┌─────────────────────────────────────────────────────────────┐")
-                    print("  │  ⚠️  KEMUNGKINAN PENYEBAB: SHORTCUT GOOGLE DRIVE             │")
-                    print("  │                                                              │")
-                    print("  │  Folder berisi SHORTCUT ke file, bukan file aslinya.        │")
-                    print("  │  Shortcut tidak bisa didownload karena izin berbeda.        │")
-                    print("  │                                                              │")
-                    print("  │  Minta NGO untuk:                                           │")
-                    print("  │  1. Pindahkan file VIDEO/GAMBAR ASLI ke dalam folder        │")
-                    print("  │  2. Hapus shortcut yang ada                                 │")
-                    print("  │  3. Pastikan folder hanya berisi file langsung (bukan       │")
-                    print("  │     shortcut atau sub-folder)                               │")
-                    print("  └─────────────────────────────────────────────────────────────┘")
-                    print()
+            MAX_RETRIES = 3
+            folder_ok = False
+            for attempt in range(1, MAX_RETRIES + 1):
+                try:
+                    gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
+                    folder_ok = True
+                    break
+                except Exception as e:
+                    err_str = str(e)
+                    is_timeout = "timed out" in err_str.lower() or "timeout" in err_str.lower()
+                    is_access  = "owner and editors" in err_str or "Access denied" in err_str or "permission" in err_str.lower()
+                    print(f"  ERROR (percobaan {attempt}/{MAX_RETRIES}): {e}")
+                    if is_timeout and attempt < MAX_RETRIES:
+                        wait = 10 * attempt
+                        print(f"  Koneksi timeout. Mencoba ulang dalam {wait} detik...")
+                        time.sleep(wait)
+                        continue
+                    if is_access:
+                        print()
+                        print("  ┌─────────────────────────────────────────────────────────────┐")
+                        print("  │  ⚠️  KEMUNGKINAN PENYEBAB: SHORTCUT GOOGLE DRIVE             │")
+                        print("  │                                                              │")
+                        print("  │  Folder berisi SHORTCUT ke file, bukan file aslinya.        │")
+                        print("  │  Shortcut tidak bisa didownload karena izin berbeda.        │")
+                        print("  │                                                              │")
+                        print("  │  Minta NGO untuk:                                           │")
+                        print("  │  1. Pindahkan file VIDEO/GAMBAR ASLI ke dalam folder        │")
+                        print("  │  2. Hapus shortcut yang ada                                 │")
+                        print("  │  3. Pastikan folder hanya berisi file langsung (bukan       │")
+                        print("  │     shortcut atau sub-folder)                               │")
+                        print("  └─────────────────────────────────────────────────────────────┘")
+                        print()
+                    if is_timeout:
+                        print("  Gagal setelah 3x percobaan. Cek koneksi internet dan coba jalankan script lagi.")
+                    break
+            if not folder_ok:
                 errors.extend(filenames)
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 continue
@@ -123,14 +140,28 @@ def download_all():
         else:
             filename = filenames[0]
             filepath = os.path.join(FOLDER, filename)
-            print(f"Mendownload {filename}...", end=" ", flush=True)
-            try:
-                result = gdown.download(drive_link, filepath, quiet=False)
-                print("Selesai" if result else "GAGAL")
-                if not result:
-                    errors.append(filename)
-            except Exception as e:
-                print(f"ERROR: {e}")
+            file_ok = False
+            for attempt in range(1, 4):
+                print(f"Mendownload {filename}{'  (percobaan ke-' + str(attempt) + ')' if attempt > 1 else ''}...", end=" ", flush=True)
+                try:
+                    result = gdown.download(drive_link, filepath, quiet=False)
+                    if result:
+                        print("Selesai")
+                        file_ok = True
+                        break
+                    else:
+                        print("GAGAL")
+                        if attempt < 3:
+                            time.sleep(5 * attempt)
+                except Exception as e:
+                    err_str = str(e)
+                    print(f"ERROR: {e}")
+                    if ("timed out" in err_str.lower() or "timeout" in err_str.lower()) and attempt < 3:
+                        print(f"  Timeout. Mencoba ulang dalam {5 * attempt} detik...")
+                        time.sleep(5 * attempt)
+                    else:
+                        break
+            if not file_ok:
                 errors.append(filename)
 
     return errors
