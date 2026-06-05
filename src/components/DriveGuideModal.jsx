@@ -92,11 +92,22 @@ export default function DriveGuideModal({ onClose }) {
               <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
                 <p className="text-[10.5px] font-bold text-red-600 mb-1">✗ Jangan lakukan ini:</p>
                 <ul className="text-[10.5px] text-red-600 space-y-0.5 leading-relaxed">
+                  <li>• Folder yang berisi <span className="font-semibold">shortcut</span> ke file (bukan file aslinya)</li>
                   <li>• Folder yang berisi folder lain di dalamnya</li>
                   <li>• Folder "master" yang isinya campuran banyak iklan/kampanye</li>
                   <li>• File yang masih draft atau belum final</li>
                   <li>• Folder kosong atau berisi file yang tidak relevan</li>
                 </ul>
+              </div>
+
+              {/* Shortcut warning */}
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-2.5">
+                <p className="text-[10.5px] font-bold text-amber-700 mb-1">⚠️ Perhatian khusus: Shortcut Google Drive</p>
+                <p className="text-[10.5px] text-amber-700 leading-relaxed">
+                  Shortcut adalah "alias" yang menunjuk ke file di tempat lain — tampilannya mirip file biasa tapi <span className="font-semibold">tidak bisa didownload oleh script</span>.
+                  Pastikan file yang ada di folder adalah <span className="font-semibold">file asli</span>, bukan shortcut.
+                  Cara cek: klik kanan file di Google Drive → jika ada opsi "Show original location", berarti itu shortcut.
+                </p>
               </div>
 
               <p className="text-[10.5px] text-gray-500 leading-relaxed">

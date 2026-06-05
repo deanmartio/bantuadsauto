@@ -67,7 +67,23 @@ def download_all():
             try:
                 gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
             except Exception as e:
+                err_str = str(e)
                 print(f"  ERROR: {e}")
+                if "owner and editors" in err_str or "Access denied" in err_str or "permission" in err_str.lower():
+                    print()
+                    print("  ┌─────────────────────────────────────────────────────────────┐")
+                    print("  │  ⚠️  KEMUNGKINAN PENYEBAB: SHORTCUT GOOGLE DRIVE             │")
+                    print("  │                                                              │")
+                    print("  │  Folder berisi SHORTCUT ke file, bukan file aslinya.        │")
+                    print("  │  Shortcut tidak bisa didownload karena izin berbeda.        │")
+                    print("  │                                                              │")
+                    print("  │  Minta NGO untuk:                                           │")
+                    print("  │  1. Pindahkan file VIDEO/GAMBAR ASLI ke dalam folder        │")
+                    print("  │  2. Hapus shortcut yang ada                                 │")
+                    print("  │  3. Pastikan folder hanya berisi file langsung (bukan       │")
+                    print("  │     shortcut atau sub-folder)                               │")
+                    print("  └─────────────────────────────────────────────────────────────┘")
+                    print()
                 errors.extend(filenames)
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 continue
@@ -78,7 +94,21 @@ def download_all():
             ])
 
             if not downloaded:
-                print("  Tidak ada file yang berhasil didownload.")
+                # Check if gdown printed access-denied messages (shortcuts case — no exception raised)
+                print()
+                print("  ┌─────────────────────────────────────────────────────────────┐")
+                print("  │  ⚠️  TIDAK ADA FILE YANG TERDOWNLOAD — CEK KEMUNGKINAN:      │")
+                print("  │                                                              │")
+                print("  │  1. SHORTCUT: Folder berisi shortcut, bukan file asli.      │")
+                print("  │     → Minta NGO taruh file VIDEO/GAMBAR ASLI di folder,     │")
+                print("  │       bukan shortcut ke file di tempat lain.                │")
+                print("  │                                                              │")
+                print("  │  2. IZIN: File belum di-share 'Anyone with the link'.       │")
+                print("  │     → Minta NGO cek sharing setting setiap file di folder.  │")
+                print("  │                                                              │")
+                print("  │  3. FOLDER KOSONG: Folder Drive mungkin sudah terhapus.     │")
+                print("  └─────────────────────────────────────────────────────────────┘")
+                print()
                 errors.extend(filenames)
             else:
                 for i, expected_name in enumerate(filenames):
