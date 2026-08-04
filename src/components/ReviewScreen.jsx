@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { validate, getDuplicateAdNames } from '../utils/validation';
-import { getLocalDateString } from '../utils/driveUtils';
+import { getZipFilename } from '../utils/zipGenerator';
 
 export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
   const { errors, hasDuplicates } = validate(ngoName, adRows);
@@ -8,9 +8,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
   const duplicateNames = getDuplicateAdNames(adRows);
   const [showModal, setShowModal] = useState(false);
 
-  const date = getLocalDateString();
-  const xlsxFilename = `BantuAds_${ngoName}_${date}.xlsx`;
-  const pyFilename = `download_creatives_${ngoName}_${date}.py`;
+  const zipFilename = getZipFilename(ngoName);
 
   return (
     <div className="max-w-3xl mx-auto pb-24">
@@ -144,27 +142,17 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
               </svg>
             </div>
 
-            <h2 className="text-lg font-bold text-[#2B2033] text-center mb-1">2 File Akan Diunduh</h2>
+            <h2 className="text-lg font-bold text-[#2B2033] text-center mb-1">1 File ZIP Akan Diunduh</h2>
             <p className="text-xs text-gray-500 text-center mb-4">
-              Kedua file ini harus dikirim ke tim KawanBantu via WhatsApp.
+              File ZIP ini harus dikirim ke tim KawanBantu via WhatsApp.
             </p>
 
             <div className="bg-[#F7F2EA] rounded-xl p-3 mb-4 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center shrink-0 text-green-700 text-xs font-bold">XL</span>
-                <span className="text-xs font-semibold text-[#2B2033] break-all">{xlsxFilename}</span>
+                <span className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0 text-purple-700 text-xs font-bold">ZIP</span>
+                <span className="text-xs font-semibold text-[#2B2033] break-all">{zipFilename}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 text-xs font-bold">PY</span>
-                <span className="text-xs font-semibold text-[#2B2033] break-all">{pyFilename}</span>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-5 flex gap-2">
-              <span className="text-amber-500 text-base shrink-0">⚠️</span>
-              <p className="text-xs text-amber-800">
-                Jika Chrome memunculkan popup <strong>"Izinkan download multiple file?"</strong> — klik <strong>Izinkan</strong>. Kedua file harus berhasil terunduh.
-              </p>
+              <p className="text-[11px] text-gray-400 pl-9">Berisi file .xlsx dan .py — tim KawanBantu tinggal extract.</p>
             </div>
 
             <div className="flex gap-2">

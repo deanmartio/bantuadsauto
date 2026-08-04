@@ -55,6 +55,18 @@ ${listItems}
 
 # ── STEP 1: Download dari Google Drive ───────────────────────────────────────
 
+def is_html_error_page(filepath):
+    """Deteksi halaman HTML error/kuota dari Google Drive yang tersimpan seolah-olah file asli."""
+    try:
+        with open(filepath, 'rb') as f:
+            head = f.read(4096)
+    except OSError:
+        return False
+    head_lower = head.lower()
+    markers = [b'<html', b'<!doctype html', b'quota exceeded', b'virus scan warning', b'too many users']
+    return any(marker in head_lower for marker in markers)
+
+
 def download_all():
     os.makedirs(FOLDER, exist_ok=True)
     errors = []
@@ -130,9 +142,13 @@ def download_all():
             else:
                 for i, expected_name in enumerate(filenames):
                     if i < len(downloaded):
-                        os.replace(os.path.join(temp_dir, downloaded[i]),
-                                   os.path.join(FOLDER, expected_name))
-                        print(f"  Disimpan sebagai '{expected_name}'")
+                        downloaded_path = os.path.join(temp_dir, downloaded[i])
+                        if is_html_error_page(downloaded_path):
+                            print(f"  GAGAL '{expected_name}' — dapat halaman HTML dari Drive, bukan file asli (kemungkinan kuota habis).")
+                            errors.append(expected_name)
+                        else:
+                            os.replace(downloaded_path, os.path.join(FOLDER, expected_name))
+                            print(f"  Disimpan sebagai '{expected_name}'")
                     else:
                         print(f"  PERINGATAN: file ke-{i+1} tidak ada di folder Drive.")
                         errors.append(expected_name)
@@ -144,11 +160,19 @@ def download_all():
             for attempt in range(1, 4):
                 print(f"Mendownload {filename}{'  (percobaan ke-' + str(attempt) + ')' if attempt > 1 else ''}...", end=" ", flush=True)
                 try:
-                    result = gdown.download(drive_link, filepath, quiet=False)
+                    result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
                     if result:
-                        print("Selesai")
-                        file_ok = True
-                        break
+                        if is_html_error_page(filepath):
+                            os.remove(filepath)
+                            print("GAGAL (dapat halaman HTML dari Drive, bukan file asli — kemungkinan kuota habis)")
+                            if attempt < 3:
+                                wait = 20 * attempt
+                                print(f"  Mencoba ulang dalam {wait} detik...")
+                                time.sleep(wait)
+                        else:
+                            print("Selesai")
+                            file_ok = True
+                            break
                     else:
                         print("GAGAL")
                         if attempt < 3:
@@ -163,6 +187,7 @@ def download_all():
                         break
             if not file_ok:
                 errors.append(filename)
+            time.sleep(3)
 
     return errors
 
@@ -182,7 +207,7 @@ def paginate(url, params):
 
 
 def fetch_meta_ids(token, ad_account_id):
-    """Return {filename: meta_id} by querying advideos + adimages."""
+    """Return ({filename: meta_id}, {filename: thumbnail_url}) by querying advideos + adimages."""
     if not ad_account_id.startswith('act_'):
         ad_account_id = f"act_{ad_account_id}"
 
@@ -190,6 +215,7 @@ def fetch_meta_ids(token, ad_account_id):
     videos    = [f for f in all_files if f.lower().endswith('.mp4')]
     images    = [f for f in all_files if not f.lower().endswith('.mp4')]
     filename_to_id = {}
+    filename_to_thumb = {}
 
     # ── Videos ───────────────────────────────────────────────────────────────
     if videos:
@@ -226,6 +252,27 @@ def fetch_meta_ids(token, ad_account_id):
             else:
                 print(f"  ✗ {filename}  — tidak cocok. Cek format title di atas.")
 
+        # Fetch each matched video's auto-generated cover frame as its thumbnail
+        print("  Mengambil thumbnail video...", end=" ", flush=True)
+        thumbs_ok = 0
+        for filename, meta_id in filename_to_id.items():
+            video_id = meta_id[2:] if meta_id.startswith('v:') else meta_id
+            try:
+                r = requests.get(f"{META_URL}/{video_id}",
+                                  params={'fields': 'picture', 'access_token': token}, timeout=30)
+                d = r.json()
+                if 'error' in d:
+                    raise Exception(d['error'].get('message', str(d['error'])))
+                picture = d.get('picture')
+                if picture:
+                    filename_to_thumb[filename] = picture
+                    thumbs_ok += 1
+                else:
+                    print(f"\\n  ⚠ PERINGATAN: {filename} tidak punya thumbnail otomatis, dilewati.", end=" ", flush=True)
+            except Exception as e:
+                print(f"\\n  ⚠ PERINGATAN: gagal ambil thumbnail {filename}: {e}", end=" ", flush=True)
+        print(f"{thumbs_ok}/{len(filename_to_id)} thumbnail didapat.")
+
     # ── Images ───────────────────────────────────────────────────────────────
     if images:
         print("  Mengambil daftar gambar dari Media Library...", end=" ", flush=True)
@@ -246,7 +293,7 @@ def fetch_meta_ids(token, ad_account_id):
             else:
                 print(f"  ✗ {filename}  — tidak ditemukan di Media Library (belum diupload?)")
 
-    return filename_to_id
+    return filename_to_id, filename_to_thumb
 
 
 def resolve_path(raw):
@@ -283,7 +330,7 @@ def find_xlsx():
         print("  Pastikan path benar dan coba lagi.")
 
 
-def write_xlsx(filename_to_id, xlsx_path):
+def write_xlsx(filename_to_id, filename_to_thumb, xlsx_path):
     wb   = openpyxl.load_workbook(xlsx_path)
     ws   = wb.active
     hdrs = [cell.value for cell in ws[1]]
@@ -292,10 +339,11 @@ def write_xlsx(filename_to_id, xlsx_path):
         try:    return hdrs.index(name) + 1
         except: return None
 
-    vfn_c  = colidx('Video File Name')
-    vid_c  = colidx('Video ID')
-    ifn_c  = colidx('Image File Name')
-    hash_c = colidx('Image Hash')
+    vfn_c    = colidx('Video File Name')
+    vid_c    = colidx('Video ID')
+    vthumb_c = colidx('Video Thumbnail URL')
+    ifn_c    = colidx('Image File Name')
+    hash_c   = colidx('Image Hash')
 
     updated = 0
     for row in ws.iter_rows(min_row=2):
@@ -304,6 +352,10 @@ def write_xlsx(filename_to_id, xlsx_path):
             if v and v in filename_to_id:
                 row[vid_c - 1].value = filename_to_id[v]
                 updated += 1
+        if vfn_c and vthumb_c:
+            v = row[vfn_c - 1].value
+            if v and v in filename_to_thumb:
+                row[vthumb_c - 1].value = filename_to_thumb[v]
         if ifn_c and hash_c:
             v = row[ifn_c - 1].value
             if v and v in filename_to_id:
@@ -324,7 +376,14 @@ total  = sum(len(item[1]) for item in CREATIVE_LIST)
 
 print(f"\\n{'=' * 55}")
 if errors:
-    print(f"  {len(errors)} file gagal didownload.")
+    print(f"  {len(errors)} file gagal didownload:")
+    for fname in errors:
+        print(f"    - {fname}")
+    print()
+    print("  Kalau banyak file gagal sekaligus, kemungkinan besar kuota download")
+    print("  harian Google Drive sudah habis (bukan masalah link/izin per-file).")
+    print("  Solusi: tunggu beberapa jam lalu jalankan ulang script ini, atau")
+    print("  minta NGO upload ulang creative ke lokasi Google Drive yang baru.")
 else:
     print(f"  Selesai! {total} file tersimpan di folder '{FOLDER}'.")
 print("=" * 55)
@@ -387,7 +446,7 @@ input("Tekan Enter setelah semua file selesai diupload di browser...")
 while True:
     print("\\nMengambil ID dari Meta Media Library...")
     try:
-        filename_to_id = fetch_meta_ids(token, AD_ACCOUNT_ID)
+        filename_to_id, filename_to_thumb = fetch_meta_ids(token, AD_ACCOUNT_ID)
         break
     except Exception as e:
         print(f"  ERROR: {e}")
@@ -397,6 +456,7 @@ while True:
         choice = input("  Pilihan (r/s): ").strip().lower()
         if choice == 's':
             filename_to_id = {}
+            filename_to_thumb = {}
             break
         # re-enter token
         while True:
@@ -424,14 +484,14 @@ if not filename_to_id:
 
 # ── Find XLSX with retry loop + re-apply to another file ─────────────────────
 xlsx_path = find_xlsx()
-write_xlsx(filename_to_id, xlsx_path)
+write_xlsx(filename_to_id, filename_to_thumb, xlsx_path)
 
 while True:
     again = input("\\nApply Video ID yang sama ke file XLSX lain? (y/Enter=tidak): ").strip().lower()
     if again != 'y':
         break
     xlsx_path2 = find_xlsx()
-    write_xlsx(filename_to_id, xlsx_path2)
+    write_xlsx(filename_to_id, filename_to_thumb, xlsx_path2)
 
 print("\\nSelesai!")
 `;

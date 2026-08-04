@@ -159,7 +159,7 @@ const FIXED = {
   'Campaign Status':                            'ACTIVE',
   'Campaign Objective':                         'Outcome Sales',
   'Buying Type':                                'AUCTION',
-  'Campaign Bid Strategy':                      'Highest volume or value',
+  'Campaign Bid Strategy':                      'Highest volume', // matches live campaign; irrelevant anyway since Campaign ID targets an existing campaign
   'New Objective':                              'Yes',
   'Is Budget Scheduling Enabled For Campaign':  'No',
   'Campaign High Demand Periods':               '[]',
@@ -182,20 +182,20 @@ const FIXED = {
   'Targeting Optimization':                     'expansion_all',
   'Brand Safety Inventory Filtering Levels':    'FACEBOOK_RELAXED, AN_RELAXED',
   'Optimization Goal':                          'VALUE',
-  'Attribution Spec':                           '[{"event_type":"CLICK_THROUGH","window_days":7},{"event_type":"VIEW_THROUGH","window_days":1}]',
+  // 7d click + 1d view + 1d engaged-video-view (deliberate choice for our video-only creatives)
+  'Attribution Spec':                           '[{"event_type":"CLICK_THROUGH","window_days":7},{"event_type":"VIEW_THROUGH","window_days":1},{"event_type":"ENGAGED_VIDEO_VIEW","window_days":1}]',
   'Billing Event':                              'IMPRESSIONS',
   'Regional Regulated Categories':              'VOLUNTARY_VERIFICATION',
   'Ad Status':                                  'ACTIVE',
   'Optimize text per person':                   'No',
   'Conversion Tracking Pixels':                 'tp:893612609287097',
-  'Optimized Ad Creative':                      'No',
+  'Optimized Ad Creative':                      'Yes',
   'Call to Action':                             'LEARN_MORE',
   'Additional Custom Tracking Specs':           '[]',
   'Video Retargeting':                          'No',
   'Link Object ID':                             'o:280665741793941',   // KawanBantu FB Page
   'Instagram Account ID':                       'x:25354189687559569', // KawanBantu IG
   'Use Page as Actor':                          'No',
-  'Degrees of Freedom Type':                    'USER_ENROLLED_AUTOFLOW',
 };
 
 export function generateXLSX(ngoName, adRows) {
@@ -210,11 +210,11 @@ export function generateXLSX(ngoName, adRows) {
 
   let rowIdx = 2;
 
-  // Columns highlighted yellow — auto-filled by the Python script (Video ID, Image Hash)
-  // or filled manually by the team (Ad Set ID, Ad Set Name, Identity columns)
+  // Columns highlighted yellow — auto-filled by the Python script (Video ID, Image Hash,
+  // Video Thumbnail URL) or filled manually by the team (Ad Set ID, Ad Set Name, Identity columns)
   const YELLOW_COLS = new Set([
     COL['Ad Set ID'], COL['Ad Set Name'],
-    COL['Video ID'], COL['Image Hash'],
+    COL['Video ID'], COL['Image Hash'], COL['Video Thumbnail URL'],
   ]);
 
   adRows.forEach(row => {

@@ -5,9 +5,7 @@ import AdTable from './components/AdTable';
 import ReviewScreen from './components/ReviewScreen';
 import SuccessScreen from './components/SuccessScreen';
 import { validate } from './utils/validation';
-import { generateXLSX } from './utils/xlsxGenerator';
-import { generatePythonScript } from './utils/pythonScriptGenerator';
-import { getLocalDateString } from './utils/driveUtils';
+import { generateExportZip } from './utils/zipGenerator';
 
 const STORAGE_KEY = 'bantuads_form_draft';
 let nextId = 1;
@@ -50,7 +48,7 @@ export default function App() {
   const [screen, setScreen] = useState('form');
   const [ngoName, setNgoName] = useState(draft?.ngoName ?? '');
   const [adRows, setAdRows] = useState(draft?.adRows ?? [createEmptyRow()]);
-  const [exportedFiles, setExportedFiles] = useState(null); // { xlsxFilename, pyFilename }
+  const [exportedFiles, setExportedFiles] = useState(null); // { zipFilename, xlsxFilename, pyFilename }
 
   // Auto-save draft on every change
   useEffect(() => {
@@ -87,34 +85,20 @@ export default function App() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function handleExport() {
-    const date = getLocalDateString();
-    const pyFilename = `download_creatives_${ngoName}_${date}.py`;
+  async function handleExport() {
+    const { blob: zipBlob, filename: zipFilename, xlsxFilename, pyFilename } = await generateExportZip(ngoName, adRows);
 
-    const pyContent = generatePythonScript(ngoName, adRows);
-    const pyBlob = new Blob([pyContent], { type: 'text/plain' });
-
-    const { blob: xlsxBlob, filename: xlsxFilename } = generateXLSX(ngoName, adRows);
-
-    triggerDownload(pyBlob, pyFilename);
-    setTimeout(() => triggerDownload(xlsxBlob, xlsxFilename), 400);
+    triggerDownload(zipBlob, zipFilename);
 
     // Clear draft and show success screen
-    setTimeout(() => {
-      localStorage.removeItem(STORAGE_KEY);
-      setExportedFiles({ xlsxFilename, pyFilename });
-      setScreen('success');
-    }, 500);
+    localStorage.removeItem(STORAGE_KEY);
+    setExportedFiles({ zipFilename, xlsxFilename, pyFilename });
+    setScreen('success');
   }
 
-  function handleReDownload() {
-    const date = getLocalDateString();
-    const pyFilename = `download_creatives_${ngoName}_${date}.py`;
-    const pyContent = generatePythonScript(ngoName, adRows);
-    const pyBlob = new Blob([pyContent], { type: 'text/plain' });
-    const { blob: xlsxBlob, filename: xlsxFilename } = generateXLSX(ngoName, adRows);
-    triggerDownload(pyBlob, pyFilename);
-    setTimeout(() => triggerDownload(xlsxBlob, xlsxFilename), 400);
+  async function handleReDownload() {
+    const { blob: zipBlob, filename: zipFilename } = await generateExportZip(ngoName, adRows);
+    triggerDownload(zipBlob, zipFilename);
   }
 
   function handleStartOver() {

@@ -14,41 +14,34 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
 
       <h1 className="text-2xl font-bold text-[#2B2033] mb-2">File Berhasil Diunduh!</h1>
       <p className="text-sm text-gray-500 mb-8">
-        Dua file submission sudah tersimpan di folder <span className="font-semibold text-[#2B2033]">Downloads</span> kamu.
+        File submission (ZIP) sudah tersimpan di folder <span className="font-semibold text-[#2B2033]">Downloads</span> kamu.
       </p>
 
-      {/* Files downloaded */}
+      {/* File downloaded */}
       <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6 text-left">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">File yang diunduh</p>
         <div className="flex items-start gap-3 mb-3">
-          <span className="mt-0.5 w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+          <span className="mt-0.5 w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </span>
           <div>
-            <p className="text-sm font-semibold text-[#2B2033] break-all">{exportedFiles?.xlsxFilename}</p>
-            <p className="text-xs text-gray-400">Template Meta Ads — upload ke Ads Manager</p>
+            <p className="text-sm font-semibold text-[#2B2033] break-all">{exportedFiles?.zipFilename}</p>
+            <p className="text-xs text-gray-400">Berisi template Meta Ads (.xlsx) + script download creative (.py)</p>
           </div>
         </div>
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-[#2B2033] break-all">{exportedFiles?.pyFilename}</p>
-            <p className="text-xs text-gray-400">Script download creative dari Google Drive</p>
-          </div>
+        <div className="pl-11 space-y-1">
+          <p className="text-xs text-gray-400 break-all">↳ {exportedFiles?.xlsxFilename}</p>
+          <p className="text-xs text-gray-400 break-all">↳ {exportedFiles?.pyFilename}</p>
         </div>
       </div>
 
-      {/* Primary CTA — send the files */}
+      {/* Primary CTA — send the file */}
       <div className="w-full bg-[#2A9E99] rounded-2xl p-5 mb-4 text-left">
         <p className="text-xs font-bold text-white/70 uppercase tracking-wide mb-1">Langkah Pertama</p>
-        <p className="text-white font-bold text-base mb-1">Kirim 2 file ini ke tim KawanBantu</p>
-        <p className="text-white/80 text-xs">via WhatsApp atau grup chat. Kedua file wajib dikirim.</p>
+        <p className="text-white font-bold text-base mb-1">Kirim file ZIP ini ke tim KawanBantu</p>
+        <p className="text-white/80 text-xs">via WhatsApp atau grup chat. Cukup kirim 1 file ZIP saja.</p>
       </div>
 
       {/* Next step card */}
@@ -56,9 +49,11 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
         <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3">Selanjutnya (dikerjakan tim KawanBantu)</p>
         <ol className="space-y-3">
           {[
+            'Extract file ZIP → didapat file .xlsx dan .py.',
             'Jalankan script Python → download semua creative dari Google Drive otomatis.',
             'Upload creative ke Meta Media Library → script ambil Video ID otomatis → XLSX terupdate.',
             'Import XLSX ke Ads Manager: ☰ → Import & Export → Import Ads.',
+            'Kalau NGO ini pakai Partnership Ads: publish dulu tanpa Partnership Ads, baru setelah ads live, edit satu-satu untuk aktifkan Partnership Ads (NGO = identitas pertama, KawanBantu = kedua). Jangan set Partnership Ads saat masih proses import — akan gagal.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="w-5 h-5 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
@@ -81,7 +76,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Download Ulang 2 File
+          Download Ulang File ZIP
         </button>
         <button
           type="button"
