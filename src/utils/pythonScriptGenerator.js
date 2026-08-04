@@ -67,6 +67,18 @@ def is_html_error_page(filepath):
     return any(marker in head_lower for marker in markers)
 
 
+def download_folder_compat(drive_link, temp_dir):
+    """gdown's download_folder() signature varies by installed version — some builds don't
+    accept remaining_ok. Fall back to the plain call so the script works regardless of version."""
+    try:
+        gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
+    except TypeError as e:
+        if 'remaining_ok' in str(e):
+            gdown.download_folder(drive_link, output=temp_dir, quiet=False)
+        else:
+            raise
+
+
 def download_all():
     os.makedirs(FOLDER, exist_ok=True)
     errors = []
@@ -81,7 +93,7 @@ def download_all():
             folder_ok = False
             for attempt in range(1, MAX_RETRIES + 1):
                 try:
-                    gdown.download_folder(drive_link, output=temp_dir, quiet=False, remaining_ok=True)
+                    download_folder_compat(drive_link, temp_dir)
                     folder_ok = True
                     break
                 except Exception as e:
