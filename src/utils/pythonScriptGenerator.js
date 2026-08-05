@@ -79,6 +79,18 @@ def download_folder_compat(drive_link, temp_dir):
             raise
 
 
+def download_compat(drive_link, filepath):
+    """gdown's download() signature varies by installed version — some builds don't
+    accept fuzzy. Fall back to the plain call so the script works regardless of version."""
+    try:
+        return gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
+    except TypeError as e:
+        if 'fuzzy' in str(e):
+            return gdown.download(drive_link, filepath, quiet=False)
+        else:
+            raise
+
+
 def download_all():
     os.makedirs(FOLDER, exist_ok=True)
     errors = []
@@ -172,7 +184,7 @@ def download_all():
             for attempt in range(1, 4):
                 print(f"Mendownload {filename}{'  (percobaan ke-' + str(attempt) + ')' if attempt > 1 else ''}...", end=" ", flush=True)
                 try:
-                    result = gdown.download(drive_link, filepath, quiet=False, fuzzy=True)
+                    result = download_compat(drive_link, filepath)
                     if result:
                         if is_html_error_page(filepath):
                             os.remove(filepath)
