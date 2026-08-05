@@ -159,7 +159,9 @@ const FIXED = {
   'Campaign Status':                            'ACTIVE',
   'Campaign Objective':                         'Outcome Sales',
   'Buying Type':                                'AUCTION',
-  'Campaign Bid Strategy':                      'Highest volume', // matches live campaign; irrelevant anyway since Campaign ID targets an existing campaign
+  // "Highest volume" is REJECTED by Meta's bulk importer (blocks the whole import) — the
+  // only valid value pairing with VALUE-based Optimization Goal is "Highest volume or value".
+  'Campaign Bid Strategy':                      'Highest volume or value',
   'New Objective':                              'Yes',
   'Is Budget Scheduling Enabled For Campaign':  'No',
   'Campaign High Demand Periods':               '[]',
