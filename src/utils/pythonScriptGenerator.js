@@ -141,9 +141,15 @@ def download_all():
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 continue
 
+            # Walk recursively — gdown preserves nested subfolders from Drive (e.g. NGOs that
+            # put final videos inside a "Final"/"Ready" subfolder), so files may not sit
+            # directly in temp_dir. A flat os.listdir() would miss them entirely and the
+            # rmtree below would silently delete the "undiscovered" files.
             downloaded = sorted([
-                f for f in os.listdir(temp_dir)
-                if os.path.isfile(os.path.join(temp_dir, f)) and not f.startswith('.')
+                os.path.join(dirpath, f)
+                for dirpath, _dirnames, files in os.walk(temp_dir)
+                for f in files
+                if not f.startswith('.')
             ])
 
             if not downloaded:
@@ -166,7 +172,7 @@ def download_all():
             else:
                 for i, expected_name in enumerate(filenames):
                     if i < len(downloaded):
-                        downloaded_path = os.path.join(temp_dir, downloaded[i])
+                        downloaded_path = downloaded[i]
                         if is_html_error_page(downloaded_path):
                             print(f"  GAGAL '{expected_name}' — dapat halaman HTML dari Drive, bukan file asli (kemungkinan kuota habis).")
                             errors.append(expected_name)
