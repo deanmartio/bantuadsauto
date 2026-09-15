@@ -16,11 +16,11 @@ export function validate(ngoName, adRows) {
     row.creatives.forEach((c, ci) => {
       if (!c.link.trim()) errors.push(`Baris ${i + 1}, creative ${ci + 1}: Link tidak boleh kosong.`);
     });
-    if (row.primaryTexts.every(t => !t.trim())) {
-      errors.push(`Baris ${i + 1}: Minimal 1 primary text harus diisi.`);
+    if (!row.primaryText.trim()) {
+      errors.push(`Baris ${i + 1}: Primary text wajib diisi.`);
     }
-    if (row.headlines.every(h => !h.trim())) {
-      errors.push(`Baris ${i + 1}: Minimal 1 headline harus diisi.`);
+    if (!row.headline.trim()) {
+      errors.push(`Baris ${i + 1}: Headline wajib diisi.`);
     }
   });
 

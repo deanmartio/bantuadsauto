@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import CreativeInput from './CreativeInput';
-import TextVariantInput from './TextVariantInput';
 import DriveGuideModal from './DriveGuideModal';
 
 export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, onDelete }) {
@@ -21,20 +20,6 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
 
   function removeCreative(ci) {
     updateField('creatives', row.creatives.filter((_, i) => i !== ci));
-  }
-
-  function updateVariant(field, vi, value) {
-    const updated = row[field].map((v, i) => i === vi ? value : v);
-    updateField(field, updated);
-  }
-
-  function addVariant(field) {
-    if (row[field].length >= 5) return;
-    updateField(field, [...row[field], '']);
-  }
-
-  function removeVariant(field, vi) {
-    updateField(field, row[field].filter((_, i) => i !== vi));
   }
 
   return (
@@ -130,25 +115,29 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
 
         {/* Primary Text */}
         <div className="lg:col-span-3">
-          <TextVariantInput
-            label="Primary Text"
-            note="Tambah hingga 5 varian. Meta akan mengujinya secara otomatis."
-            values={row.primaryTexts}
-            onUpdate={(vi, val) => updateVariant('primaryTexts', vi, val)}
-            onAdd={() => addVariant('primaryTexts')}
-            onRemove={vi => removeVariant('primaryTexts', vi)}
+          <label className="block text-sm font-semibold text-[#2B2033] mb-1">
+            Primary Text <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={row.primaryText}
+            onChange={e => updateField('primaryText', e.target.value)}
+            rows={3}
+            placeholder="Teks utama iklan"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#2A9E99] focus:border-transparent"
           />
         </div>
 
         {/* Headline */}
         <div className="lg:col-span-3">
-          <TextVariantInput
-            label="Headline"
-            note="Tambah hingga 5 varian."
-            values={row.headlines}
-            onUpdate={(vi, val) => updateVariant('headlines', vi, val)}
-            onAdd={() => addVariant('headlines')}
-            onRemove={vi => removeVariant('headlines', vi)}
+          <label className="block text-sm font-semibold text-[#2B2033] mb-1">
+            Headline <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={row.headline}
+            onChange={e => updateField('headline', e.target.value)}
+            rows={1}
+            placeholder="Judul iklan"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#2A9E99] focus:border-transparent"
           />
         </div>
       </div>

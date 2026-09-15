@@ -41,8 +41,6 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
         {adRows.map((row, i) => {
           const isDuplicate = duplicateNames.has(row.adName.trim().toLowerCase());
           const filledCreatives = row.creatives.filter(c => c.link.trim());
-          const filledPT = row.primaryTexts.filter(t => t.trim());
-          const filledHL = row.headlines.filter(h => h.trim());
 
           return (
             <div
@@ -84,25 +82,17 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
                   }
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-500 mb-1">Primary Text ({filledPT.length})</p>
-                  {filledPT.length === 0
-                    ? <p className="text-red-400">Belum diisi</p>
-                    : filledPT.map((t, ti) => (
-                        <p key={ti} className="text-gray-600 line-clamp-1">
-                          {ti + 1}. {t.slice(0, 60)}{t.length > 60 ? '…' : ''}
-                        </p>
-                      ))
+                  <p className="font-semibold text-gray-500 mb-1">Primary Text</p>
+                  {row.primaryText.trim()
+                    ? <p className="text-gray-600 line-clamp-1">{row.primaryText.slice(0, 60)}{row.primaryText.length > 60 ? '…' : ''}</p>
+                    : <p className="text-red-400">Belum diisi</p>
                   }
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-500 mb-1">Headline ({filledHL.length})</p>
-                  {filledHL.length === 0
-                    ? <p className="text-red-400">Belum diisi</p>
-                    : filledHL.map((h, hi) => (
-                        <p key={hi} className="text-gray-600 line-clamp-1">
-                          {hi + 1}. {h.slice(0, 60)}{h.length > 60 ? '…' : ''}
-                        </p>
-                      ))
+                  <p className="font-semibold text-gray-500 mb-1">Headline</p>
+                  {row.headline.trim()
+                    ? <p className="text-gray-600 line-clamp-1">{row.headline.slice(0, 60)}{row.headline.length > 60 ? '…' : ''}</p>
+                    : <p className="text-red-400">Belum diisi</p>
                   }
                 </div>
               </div>

@@ -16,9 +16,24 @@ function createEmptyRow() {
     adName: '',
     campaignLink: '',
     creatives: [{ link: '', type: 'Video', count: 1 }],
-    primaryTexts: [''],
-    headlines: [''],
+    primaryText: '',
+    headline: '',
   };
+}
+
+// Migrate drafts saved before multi-variant primary text/headline was removed
+// (Meta's bulk XLSX format never actually supported testing multiple variants —
+// see xlsxGenerator.js) so old saved rows don't crash on the new single-string shape.
+function migrateRow(row) {
+  if (row.primaryTexts || row.headlines) {
+    const { primaryTexts, headlines, ...rest } = row;
+    return {
+      ...rest,
+      primaryText: row.primaryText ?? primaryTexts?.find(t => t.trim()) ?? '',
+      headline: row.headline ?? headlines?.find(h => h.trim()) ?? '',
+    };
+  }
+  return row;
 }
 
 function loadDraft() {
@@ -26,8 +41,9 @@ function loadDraft() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Ensure IDs don't collide with future createEmptyRow() calls
     if (parsed.adRows?.length) {
+      parsed.adRows = parsed.adRows.map(migrateRow);
+      // Ensure IDs don't collide with future createEmptyRow() calls
       const maxId = Math.max(...parsed.adRows.map(r => r.id ?? 0));
       nextId = maxId + 1;
     }
