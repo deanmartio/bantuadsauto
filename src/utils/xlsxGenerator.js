@@ -221,8 +221,13 @@ export function generateXLSX(ngoName, adRows) {
 
   adRows.forEach(row => {
     const expanded  = getExpandedCreatives(row);
-    const titleValue = row.headlines.filter(h => h.trim()).join('\n');
-    const bodyValue  = row.primaryTexts.filter(t => t.trim()).join('\n');
+    // Meta's classic bulk XLSX format (Video/Link Page Post Ad) has no column for multiple
+    // headline/primary-text variants — that's only supported for Dynamic Creative ads via
+    // "Additional Headline/Body N" columns, which this template doesn't use. Joining variants
+    // with '\n' doesn't create options; it writes one literal string with embedded line breaks,
+    // which Ads Manager then flattens into a single garbled headline/text. Use the first variant.
+    const titleValue = row.headlines.find(h => h.trim())?.trim() || '';
+    const bodyValue  = row.primaryTexts.find(t => t.trim())?.trim() || '';
 
     expanded.forEach(({ adName, filename, type }) => {
       const isVideo = type === 'Video';
