@@ -41,7 +41,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
     updateField('postLinks', postLinks.map((l, i) => i === pi ? value : l));
   }
 
-  const nameError = errorFor(fieldId.adName(row)) || (isDuplicate ? 'Nama iklan ini sudah dipakai kartu lain.' : null);
+  const nameError = errorFor(fieldId.adName(row)) || (isDuplicate ? 'Nama iklan ini sudah dipakai iklan lain.' : null);
   const linkError = errorFor(fieldId.campaignLink(row));
   const primaryError = errorFor(fieldId.primaryText(row));
   const headlineError = errorFor(fieldId.headline(row));
@@ -66,7 +66,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
           <Fig className={`text-lg font-medium ${active ? 'text-brand-deep' : 'text-ink-faint'}`}>{String(index + 1).padStart(2, '0')}</Fig>
           <span className="min-w-0">
             <span id={`ad-${row.id}-title`} className="block text-base font-bold text-ink truncate">
-              {row.adName.trim() || `Iklan ${index + 1}`}
+              {row.adName.trim() || `Iklan ${String(index + 1).padStart(2, '0')}`}
             </span>
             <span className="block text-[13px] text-ink-soft truncate">
               {summaryLabel(row)}

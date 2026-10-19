@@ -38,13 +38,13 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
           {[
             ['NGO', ngoName],
-            ['Jumlah iklan', String(summary.adCount)],
+            ['Iklan di Meta', String(summary.adCount)],
             ['Sumber', MODE_LABEL[summary.mode]],
             ['Tanggal', getLocalDateString()],
           ].map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="text-xs text-ink-soft">{k}</dt>
-              <dd className={`text-[15px] font-semibold text-ink mt-0.5 break-words ${k === 'Jumlah iklan' || k === 'Tanggal' ? 'font-mono font-medium tabular-nums' : ''}`}>{v}</dd>
+              <dd className={`text-[15px] font-semibold text-ink mt-0.5 break-words ${k === 'Iklan di Meta' || k === 'Tanggal' ? 'font-mono font-medium tabular-nums' : ''}`}>{v}</dd>
             </div>
           ))}
         </dl>
@@ -53,7 +53,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
       {duplicateNames.size > 0 && (
         <div className="flex items-start gap-2.5 rounded-xl bg-warn-tint px-4 py-3 text-sm text-ink mb-4" role="status">
           <Icon name="alert" className="w-4 h-4 mt-0.5 text-warn shrink-0" />
-          Ada nama iklan yang sama di lebih dari satu kartu. Sebaiknya kembali dan bedakan namanya.
+          Ada nama iklan yang sama di lebih dari satu iklan. Sebaiknya kembali dan bedakan namanya.
         </div>
       )}
 
@@ -74,7 +74,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                   </a>
                 </div>
                 <span className="text-xs font-semibold text-ink-soft bg-paper rounded-full px-2.5 py-1 shrink-0 tabular-nums">
-                  Kartu <Fig>{String(i + 1).padStart(2, '0')}</Fig> · <Fig>{ads.length}</Fig> iklan
+                  Iklan <Fig>{String(i + 1).padStart(2, '0')}</Fig> · <Fig>{ads.length}</Fig> iklan di Meta
                 </span>
               </div>
 
@@ -92,7 +92,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
               )}
 
               <div className="border-t border-line pt-3">
-                <p className="text-xs font-semibold text-ink-soft mb-1">Iklan yang akan dibuat</p>
+                <p className="text-xs font-semibold text-ink-soft mb-1">Iklan di Meta yang akan dibuat</p>
                 <ol className="flex flex-col">
                   {ads.map((ad, ai) => (
                     <li key={ai} className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem] gap-x-2 items-baseline py-1.5 border-b border-line last:border-b-0 text-sm">
@@ -101,7 +101,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                         <span className="font-semibold text-ink">{ad.adName}</span>
                         <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>
                       </span>
-                      <Fig className="text-[11px] text-ink-soft text-right">{isPost ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</Fig>
+                      <span className="text-[11px] font-semibold tracking-[0.06em] text-ink-soft text-right">{isPost ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</span>
                     </li>
                   ))}
                 </ol>

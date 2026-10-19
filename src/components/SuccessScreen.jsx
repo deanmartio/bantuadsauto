@@ -1,12 +1,17 @@
 import { Icon, Fig } from './ui';
 
-// The teller's validation stamp: violet ink ring with the submission number.
+// The teller's validation stamp: violet double ring carrying the submission number and the
+// receipt date, both from the server (WIB), so they always agree with each other.
 function Stamp({ submission }) {
+  const tail = submission.submissionId.split('-').slice(-1)[0];
   return (
-    <div className="stamp-in inline-flex flex-col items-center justify-center text-center rounded-xl border-[3px] border-plum text-plum-deep px-4 py-2.5 -rotate-6">
-      <span className="text-sm font-extrabold tracking-[0.2em]">DITERIMA</span>
-      <Fig className="text-[11px] mt-1">{submission.receivedAt.slice(0, 10)}</Fig>
-      <Fig className="text-[11px]">KawanBantu</Fig>
+    <div className="stamp-in w-36 h-36 rounded-full border-[3px] border-plum p-1 -rotate-6 shrink-0" aria-label={`Diterima, nomor ${submission.submissionId}`}>
+      <div className="w-full h-full rounded-full border border-plum flex flex-col items-center justify-center text-center text-plum-deep">
+        <span className="text-[11px] font-bold tracking-[0.12em]">KAWANBANTU</span>
+        <span className="text-[15px] font-extrabold tracking-[0.14em] my-0.5">DITERIMA</span>
+        <Fig className="text-xs font-medium">{tail}</Fig>
+        <Fig className="text-[11px]">{submission.receivedAt.slice(0, 10)}</Fig>
+      </div>
     </div>
   );
 }

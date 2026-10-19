@@ -24,7 +24,7 @@ function Media({ creative, index, total }) {
   const id = creative && !creative.isFolder ? driveFileId(creative.link) : null;
   const isVideo = !creative || creative.type === 'Video';
   return (
-    <div className="relative aspect-square bg-paper-deep overflow-hidden">
+    <div className="relative aspect-video bg-paper-deep overflow-hidden">
       {id && !failed ? (
         <img
           key={id}
@@ -70,7 +70,7 @@ export default function AdPreview({ ngoName, row }) {
 
   return (
     <figure className="m-0">
-      <div className="mx-auto w-full max-w-[280px] rounded-2xl border border-line bg-white overflow-hidden shadow-[0_6px_20px_-12px_rgb(43_32_51/0.35)]">
+      <div className="mx-auto w-full max-w-[288px] rounded-2xl border border-line bg-white overflow-hidden shadow-[0_6px_20px_-12px_rgb(43_32_51/0.35)]">
         <div className="flex items-center gap-2.5 px-3 py-2.5">
           <span className="w-8 h-8 rounded-full bg-brand-tint text-brand-deep flex items-center justify-center text-sm font-bold shrink-0">
             {name.charAt(0).toUpperCase()}
@@ -113,9 +113,7 @@ export default function AdPreview({ ngoName, row }) {
           ))}
         </div>
       )}
-      <figcaption className="text-xs text-ink-faint text-center mt-2.5">
-        Perkiraan tampilan di feed. Aslinya bisa sedikit berbeda.
-      </figcaption>
+      <figcaption className="sr-only">Perkiraan tampilan di feed. Aslinya bisa sedikit berbeda.</figcaption>
     </figure>
   );
 }

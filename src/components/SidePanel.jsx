@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import AdPreview from './AdPreview';
 import { Icon, Fig } from './ui';
 import { getExpandedCreatives, getExpandedPosts } from '../utils/driveUtils';
@@ -13,13 +13,13 @@ function getLedger(adRows) {
       ? getExpandedPosts(row).map(p => ({ name: p.adName, kind: 'POST', detail: p.postLink.replace(/^https?:\/\/(www\.)?/, '') }))
       : getExpandedCreatives(row).map(c => ({ name: c.adName, kind: c.type === 'Video' ? 'VIDEO' : 'GAMBAR', detail: c.isFolder ? `folder, file ke-${c.folderFileIndex + 1}` : c.filename }));
     if (ads.length === 0) {
-      lines.push({ key: `${row.id}-blank`, rowId: row.id, blank: true, name: named || `Iklan ${i + 1}` });
+      lines.push({ key: `${row.id}-blank`, rowId: row.id, blank: true, name: named || `Iklan ${String(i + 1).padStart(2, '0')}` });
       return;
     }
     ads.forEach((ad, ai) => lines.push({
       key: `${row.id}-${ai}-${ad.kind}`,
       rowId: row.id,
-      name: named ? ad.name : `Iklan ${i + 1}${ads.length > 1 ? ` (${ai + 1})` : ''}`,
+      name: named ? ad.name : `Iklan ${String(i + 1).padStart(2, '0')}${ads.length > 1 ? ` (${ai + 1})` : ''}`,
       kind: ad.kind,
       detail: ad.detail,
     }));
@@ -30,17 +30,31 @@ function getLedger(adRows) {
 
 function Ledger({ lines, activeRowId, onJump }) {
   const total = lines.filter(l => !l.blank).length;
+  const listRef = useRef(null);
+  const signature = lines.map(l => l.key).join('|');
+
+  // When a line prints (or the NGO switches cards), keep that card's last line in sight inside the list.
+  useEffect(() => {
+    const list = listRef.current;
+    const rowLines = list?.querySelectorAll(`[data-row="${activeRowId}"]`);
+    const el = rowLines?.[rowLines.length - 1];
+    if (!el) return;
+    const top = el.offsetTop; // the list is position:relative, so this is relative to it
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (top + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + el.offsetHeight - list.clientHeight;
+  }, [signature, activeRowId]);
+
   return (
-    <div>
-      <p className="px-4 pt-3 pb-2 text-[13px] text-ink-soft">Iklan yang akan dibuat tim KawanBantu, dicetak per baris.</p>
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 px-4 py-2 text-[11px] font-semibold text-ink-soft border-y border-line bg-paper/60">
-        <span>No</span><span>Iklan</span><span className="text-right">Sumber</span>
+    <div className="flex flex-col min-h-0 flex-1">
+      <p className="shrink-0 px-4 pb-2.5 text-[13px] text-ink-soft">Setiap file atau postingan jadi 1 iklan di Meta.</p>
+      <div className="shrink-0 grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 px-4 py-2 text-[11px] font-semibold text-ink-soft border-y border-line bg-paper/60">
+        <span>No</span><span>Iklan di Meta</span><span className="text-right">Sumber</span>
       </div>
-      <ol>
+      <ol ref={listRef} className="relative flex-1 min-h-[7.5rem] overflow-y-auto">
         {lines.map(line => {
           const active = line.rowId === activeRowId;
           return (
-            <li key={line.key} className="print-in border-b border-line last:border-b-0">
+            <li key={line.key} data-row={line.rowId} className="print-in border-b border-line last:border-b-0">
               <button
                 type="button"
                 onClick={() => onJump(line.rowId)}
@@ -63,7 +77,7 @@ function Ledger({ lines, activeRowId, onJump }) {
                       <span className="block text-[13px] font-semibold text-ink truncate">{line.name}</span>
                       <span className="block text-[11px] text-ink-faint truncate">{line.detail}</span>
                     </span>
-                    <Fig className="text-[11px] text-ink-soft text-right">{line.kind}</Fig>
+                    <span className="text-[11px] font-semibold tracking-[0.06em] text-ink-soft text-right">{line.kind}</span>
                   </>
                 )}
               </button>
@@ -71,8 +85,8 @@ function Ledger({ lines, activeRowId, onJump }) {
           );
         })}
       </ol>
-      <div className="flex items-baseline justify-between px-4 py-3 border-t-2 border-double border-line-strong">
-        <span className="text-sm font-bold text-ink">Total iklan</span>
+      <div className="shrink-0 flex items-baseline justify-between px-4 py-3 border-t-2 border-double border-line-strong">
+        <span className="text-sm font-bold text-ink">Total iklan di Meta</span>
         <Fig className="text-base font-medium text-ink">{total}</Fig>
       </div>
     </div>
@@ -92,59 +106,33 @@ function Preview({ ngoName, row }) {
       </div>
     );
   }
-  return <div className="p-4"><AdPreview ngoName={ngoName} row={row} /></div>;
+  return <div className="px-4 pt-3 pb-4"><AdPreview ngoName={ngoName} row={row} /></div>;
 }
 
-// One panel, two tabs: the preview of the card being edited, and the passbook ledger of every ad.
+// Preview of the card being edited on top; the passbook ledger of every ad below, always visible.
 export default function SidePanel({ ngoName, adRows, activeRowId, onJump }) {
-  const [tab, setTab] = useState('preview');
   const index = Math.max(0, adRows.findIndex(r => r.id === activeRowId));
   const row = adRows[index];
   const lines = getLedger(adRows);
-  const total = lines.filter(l => !l.blank).length;
-  const tabs = [
-    { id: 'preview', label: 'Pratinjau' },
-    { id: 'ledger', label: 'Rincian iklan', count: total },
-  ];
 
   return (
-    <section className="leaf overflow-hidden">
-      <div className="flex items-center gap-1 p-1.5 border-b border-line bg-paper/60" role="tablist" aria-label="Panel samping">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`tab-${t.id}`}
-            aria-selected={tab === t.id}
-            aria-controls={`panel-${t.id}`}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-150 ${
-              tab === t.id ? 'bg-white text-ink shadow-[0_1px_3px_rgb(43_32_51/0.12)]' : 'text-ink-soft hover:text-ink'
-            }`}
-          >
-            {t.label}
-            {t.count != null && (
-              <Fig key={t.count} className={`print-in text-[11px] rounded-full px-1.5 py-0.5 ${tab === t.id ? 'bg-brand-tint text-brand-deep' : 'bg-paper-deep text-ink-soft'}`}>
-                {t.count}
-              </Fig>
-            )}
-          </button>
-        ))}
-      </div>
-      {tab === 'preview' ? (
-        <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview">
-          <div className="flex items-baseline justify-between px-4 pt-3 text-[13px] text-ink-soft">
-            <span className="truncate">Iklan <Fig>{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}</span>
-            <span className="hidden sm:inline shrink-0 ml-3">mengikuti kartu yang sedang diisi</span>
-          </div>
-          <Preview ngoName={ngoName} row={row} />
+    <div className="flex flex-col gap-3 lg:h-full">
+      <section className="leaf shrink-0" aria-labelledby="preview-title">
+        <div className="flex items-baseline justify-between px-4 pt-3.5">
+          <h2 id="preview-title" className="text-sm font-bold text-ink">Pratinjau</h2>
+          <span className="text-[13px] text-ink-soft truncate ml-3">
+            Iklan <Fig>{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
+          </span>
         </div>
-      ) : (
-        <div id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger">
-          <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
+        <Preview ngoName={ngoName} row={row} />
+      </section>
+      <section className="leaf flex flex-col min-h-0 lg:flex-1 overflow-hidden" aria-labelledby="ledger-title">
+        <div className="flex items-baseline justify-between px-4 pt-3.5 pb-1">
+          <h2 id="ledger-title" className="text-sm font-bold text-ink">Rincian iklan</h2>
+          <span className="text-[13px] text-ink-soft">dicetak per baris</span>
         </div>
-      )}
-    </section>
+        <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
+      </section>
+    </div>
   );
 }

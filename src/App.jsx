@@ -235,11 +235,10 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-7 sm:py-9">
         {screen === 'form' && (
           <>
-            <div className="mb-6 max-w-2xl">
+            <div className="mb-6 max-w-3xl">
               <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Submission Iklan</h1>
               <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
-                Isi data iklan di bawah. Satu kartu untuk satu cerita atau halaman campaign; setiap video, gambar
-                atau postingan di dalamnya jadi 1 iklan.
+                Satu iklan untuk satu cerita; setiap video, gambar atau postingan di dalamnya jadi 1 iklan di Meta.
               </p>
             </div>
 
@@ -263,7 +262,7 @@ export default function App() {
                   onAdd={handleAddRow}
                 />
               </div>
-              <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:rounded-2xl" aria-label="Pratinjau dan rincian iklan">
+              <aside className="lg:sticky lg:top-24 lg:h-[calc(100vh-11rem)] lg:min-h-[34rem]" aria-label="Pratinjau dan rincian iklan">
                 <SidePanel ngoName={ngoName} adRows={adRows} activeRowId={currentRowId} onJump={jumpToRow} />
               </aside>
             </div>
@@ -273,8 +272,8 @@ export default function App() {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line z-40">
               <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
                 <p className="text-sm text-ink-soft">
-                  <span className="font-semibold text-ink"><span className="font-mono tabular-nums">{adRows.length}</span> kartu</span>
-                  {' · '}<span className="font-mono tabular-nums">{totalAds}</span> iklan
+                  <span className="font-semibold text-ink"><span className="font-mono tabular-nums">{adRows.length}</span> iklan<span className="hidden sm:inline"> diisi</span></span>
+                  {' · '}<span className="font-mono tabular-nums">{totalAds}</span><span className="hidden sm:inline"> iklan</span> di Meta
                   {duplicateCount > 0 && <span className="text-danger font-semibold"> · ada nama iklan dobel</span>}
                 </p>
                 <div className="flex items-center gap-2">
@@ -291,7 +290,7 @@ export default function App() {
                     </button>
                   )}
                   <button type="button" onClick={handleContinue} className="btn-primary">
-                    Review Sebelum Kirim <Icon name="arrowRight" />
+                    <span className="sm:hidden">Review</span><span className="hidden sm:inline">Review Sebelum Kirim</span> <Icon name="arrowRight" />
                   </button>
                 </div>
               </div>
