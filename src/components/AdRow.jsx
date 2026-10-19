@@ -23,6 +23,11 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
   }
 
   const isPost = row.source === 'post';
+  const postLinks = row.postLinks?.length ? row.postLinks : [''];
+
+  function updatePostLink(pi, value) {
+    updateField('postLinks', postLinks.map((l, i) => i === pi ? value : l));
+  }
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border mb-4 overflow-hidden ${isDuplicate ? 'border-red-400' : 'border-gray-100'}`}>
@@ -100,13 +105,37 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
             <label className="block text-sm font-semibold text-[#2B2033] mb-1">
               Link Postingan Instagram/Facebook <span className="text-red-500">*</span>
             </label>
-            <input
-              type="url"
-              value={row.postLink || ''}
-              onChange={e => updateField('postLink', e.target.value)}
-              placeholder="https://www.instagram.com/reel/..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2A9E99] focus:border-transparent"
-            />
+            {postLinks.map((link, pi) => (
+              <div key={pi} className="flex items-center gap-2 mb-2">
+                <input
+                  type="url"
+                  value={link}
+                  onChange={e => updatePostLink(pi, e.target.value)}
+                  placeholder="https://www.instagram.com/reel/..."
+                  aria-label={`Link postingan ${pi + 1}`}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2A9E99] focus:border-transparent"
+                />
+                {postLinks.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => updateField('postLinks', postLinks.filter((_, i) => i !== pi))}
+                    aria-label={`Hapus postingan ${pi + 1}`}
+                    className="text-red-400 hover:text-red-600 text-lg leading-none px-1"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            {postLinks.length < 5 && (
+              <button
+                type="button"
+                onClick={() => updateField('postLinks', [...postLinks, ''])}
+                className="text-xs font-semibold text-[#2A9E99] border border-[#2A9E99] rounded-full px-3 py-1 hover:bg-teal-50 transition-colors"
+              >
+                + Tambah Postingan
+              </button>
+            )}
             <p className="text-xs text-gray-400 mt-2 leading-relaxed">
               Iklan akan memakai video dan caption dari postingan ini. Pastikan: (1) @kawanbantu sudah jadi kolaborator
               di postingan ini, dan (2) permintaan Partnership Ads dari @kawanbantu sudah kamu terima. Tanpa dua hal ini,

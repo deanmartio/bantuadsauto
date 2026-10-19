@@ -3,21 +3,23 @@ import { validate, getDuplicateAdNames } from '../utils/validation';
 import { getZipFilename } from '../utils/zipGenerator';
 import { isSubmitEnabled } from '../utils/submitService';
 
-export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubmit }) {
+export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubmit, onContinueWithoutSend }) {
   const { errors, hasDuplicates } = validate(ngoName, adRows);
   const hasErrors = errors.length > 0;
   const duplicateNames = getDuplicateAdNames(adRows);
   const [showModal, setShowModal] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
+  const [downloaded, setDownloaded] = useState(false); // ZIP already saved; a retry only re-sends
   const canSubmit = isSubmitEnabled();
 
   async function handleSend() {
     setSending(true);
     setSendError('');
     try {
-      await onSubmit();
+      await onSubmit({ retry: downloaded });
     } catch (err) {
+      setDownloaded(true);
       setSendError(err.message || 'Gagal mengirim.');
       setSending(false);
     }
@@ -78,7 +80,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                   {isDuplicate && <p className="text-xs text-red-500 font-semibold mt-0.5">Nama duplikat</p>}
                 </div>
                 <span className="text-xs bg-[#F7F2EA] px-2 py-1 rounded-full text-[#2B2033] font-semibold shrink-0">
-                  {isPost ? 'Postingan yang sudah ada' : `${filledCreatives.length} creative`}
+                  {isPost ? `${(row.postLinks || []).filter(l => l.trim()).length} postingan` : `${filledCreatives.length} creative`}
                 </span>
               </div>
 
@@ -94,8 +96,10 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
               {isPost ? (
                 <div className="text-xs border-t border-gray-100 pt-3">
                   <p className="font-semibold text-gray-500 mb-1">Link Postingan</p>
-                  {row.postLink?.trim()
-                    ? <p className="text-[#2A9E99] font-semibold break-all">{row.postLink}</p>
+                  {(row.postLinks || []).some(l => l.trim())
+                    ? row.postLinks.filter(l => l.trim()).map((l, li) => (
+                        <p key={li} className="text-[#2A9E99] font-semibold break-all">{l}</p>
+                      ))
                     : <p className="text-red-400">Belum diisi</p>
                   }
                 </div>
@@ -169,7 +173,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
             </h2>
             <p className="text-xs text-gray-500 text-center mb-4">
               {canSubmit
-                ? 'File ZIP akan langsung terkirim ke tim KawanBantu. Tidak perlu kirim lewat WhatsApp lagi.'
+                ? 'Submission langsung terkirim ke tim KawanBantu, dan salinan file ZIP otomatis tersimpan di folder Downloads kamu.'
                 : 'File ZIP ini harus dikirim ke tim KawanBantu via WhatsApp.'}
             </p>
 
@@ -189,6 +193,12 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
 
             {canSubmit ? (
               <div className="flex flex-col gap-2">
+                {sendError && (
+                  <p className="text-[11px] text-gray-500 -mt-2 mb-1">
+                    File ZIP sudah tersimpan di folder Downloads. Coba kirim lagi, atau kirim file ZIP itu
+                    ke tim KawanBantu via WhatsApp.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleSend}
@@ -196,24 +206,27 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                   className="w-full text-white font-bold rounded-xl py-2.5 text-sm disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
                 >
-                  {sending ? 'Mengirim… jangan tutup halaman ini' : 'Kirim ke KawanBantu'}
+                  {sending ? 'Mengirim… jangan tutup halaman ini' : sendError ? 'Coba Kirim Lagi' : 'Kirim ke KawanBantu'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowModal(false); onExport(); }}
-                  disabled={sending}
-                  className="w-full border-2 border-[#2A9E99] text-[#2A9E99] font-semibold rounded-xl py-2.5 text-sm hover:bg-teal-50 disabled:opacity-40"
-                >
-                  Download ZIP saja (cadangan)
-                </button>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={sending}
-                  className="w-full text-gray-500 font-semibold rounded-xl py-2 text-sm hover:bg-gray-50 disabled:opacity-40"
-                >
-                  Batal
-                </button>
+                {sendError ? (
+                  <button
+                    type="button"
+                    onClick={onContinueWithoutSend}
+                    disabled={sending}
+                    className="w-full border-2 border-[#2A9E99] text-[#2A9E99] font-semibold rounded-xl py-2.5 text-sm hover:bg-teal-50 disabled:opacity-40"
+                  >
+                    Saya kirim via WhatsApp saja
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={sending}
+                    className="w-full text-gray-500 font-semibold rounded-xl py-2 text-sm hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    Batal
+                  </button>
+                )}
               </div>
             ) : (
             <div className="flex gap-2">

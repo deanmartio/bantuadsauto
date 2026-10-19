@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { generateXLSX } from './xlsxGenerator';
 import { generatePythonScript } from './pythonScriptGenerator';
-import { getLocalDateString, getExpandedCreatives, isPostRow } from './driveUtils';
+import { getLocalDateString, getExpandedCreatives, getExpandedPosts, isPostRow } from './driveUtils';
 
 export function getZipFilename(ngoName) {
   const date = getLocalDateString();
@@ -13,13 +13,14 @@ export function getSubmissionSummary(adRows) {
   const driveRows = adRows.filter(r => !isPostRow(r));
   const postRows = adRows.filter(isPostRow);
   const driveAdCount = driveRows.reduce((n, r) => n + getExpandedCreatives(r).length, 0);
+  const posts = postRows.flatMap(r => getExpandedPosts(r).map(p => ({ ...p, campaignLink: r.campaignLink.trim() })));
   const mode = postRows.length === 0 ? 'drive' : driveRows.length === 0 ? 'existing_post' : 'mixed';
   return {
     driveRows,
-    postRows,
+    posts,
     mode,
-    adCount: driveAdCount + postRows.length,
-    postLinks: postRows.map(r => r.postLink.trim()),
+    adCount: driveAdCount + posts.length,
+    postLinks: posts.map(p => p.postLink),
   };
 }
 
@@ -46,11 +47,7 @@ export async function generateExportZip(ngoName, adRows) {
     submissionDate: date,
     mode: summary.mode,
     adCount: summary.adCount,
-    existingPosts: summary.postRows.map(r => ({
-      adName: r.adName.trim(),
-      postLink: r.postLink.trim(),
-      campaignLink: r.campaignLink.trim(),
-    })),
+    existingPosts: summary.posts,
   }, null, 2));
 
   const bytes = await zip.generateAsync({ type: 'uint8array' });

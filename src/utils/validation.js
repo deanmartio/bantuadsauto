@@ -14,8 +14,12 @@ export function validate(ngoName, adRows) {
     if (!row.campaignLink.trim()) errors.push(`Baris ${i + 1}: Link Halaman Campaign wajib diisi.`);
     if (isPostRow(row)) {
       // Existing post: the post's own media and copy are used, so only the post link is needed.
-      if (!row.postLink?.trim()) errors.push(`Baris ${i + 1}: Link postingan wajib diisi.`);
-      else if (!isPostLink(row.postLink)) errors.push(`Baris ${i + 1}: Link postingan harus link Instagram atau Facebook (https://...).`);
+      const links = row.postLinks || [];
+      if (links.length === 0) errors.push(`Baris ${i + 1}: Minimal 1 link postingan harus diisi.`);
+      links.forEach((l, li) => {
+        if (!l.trim()) errors.push(`Baris ${i + 1}, postingan ${li + 1}: Link tidak boleh kosong.`);
+        else if (!isPostLink(l)) errors.push(`Baris ${i + 1}, postingan ${li + 1}: Harus link Instagram atau Facebook (https://...).`);
+      });
       return;
     }
     if (row.creatives.length === 0 || row.creatives.every(c => !c.link.trim())) {

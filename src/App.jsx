@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import TopFields from './components/TopFields';
 import AdTable from './components/AdTable';
@@ -17,7 +17,7 @@ function createEmptyRow() {
     adName: '',
     campaignLink: '',
     source: 'drive', // 'drive' = Drive videos/images, 'post' = existing IG/FB post
-    postLink: '',
+    postLinks: [''],
     creatives: [{ link: '', type: 'Video', count: 1 }],
     primaryText: '',
     headline: '',
@@ -28,7 +28,11 @@ function createEmptyRow() {
 // (Meta's bulk XLSX format never actually supported testing multiple variants —
 // see xlsxGenerator.js) so old saved rows don't crash on the new single-string shape.
 function migrateRow(row) {
-  if (!row.source) row = { ...row, source: 'drive', postLink: '' };
+  if (!row.source) row = { ...row, source: 'drive' };
+  if (!row.postLinks) {
+    const { postLink, ...rest } = row;
+    row = { ...rest, postLinks: [postLink || ''] };
+  }
   if (row.primaryTexts || row.headlines) {
     const { primaryTexts, headlines, ...rest } = row;
     return {
@@ -69,7 +73,8 @@ export default function App() {
   const [ngoName, setNgoName] = useState(draft?.ngoName ?? '');
   const [adRows, setAdRows] = useState(draft?.adRows ?? [createEmptyRow()]);
   const [exportedFiles, setExportedFiles] = useState(null); // { zipFilename, xlsxFilename, pyFilename }
-  const [submission, setSubmission] = useState(null); // { submissionId, receivedAt } after "Kirim ke KawanBantu"
+  const [submission, setSubmission] = useState(null);
+  const lastZipRef = useRef(null); // the ZIP already downloaded, reused when re-sending after a failure // { submissionId, receivedAt } after "Kirim ke KawanBantu"
 
   // Auto-save draft on every change
   useEffect(() => {
@@ -118,9 +123,16 @@ export default function App() {
     setScreen('success');
   }
 
-  // Sends the ZIP straight to KawanBantu. Throws a user-readable error for ReviewScreen to show.
-  async function handleSubmit() {
-    const zip = await generateExportZip(ngoName, adRows);
+  // Always does both: downloads the ZIP (the NGO's backup copy) and sends it to KawanBantu.
+  // A retry re-sends the same ZIP without downloading it again. Throws a user-readable error.
+  async function handleSubmit({ retry = false } = {}) {
+    let zip = retry ? lastZipRef.current : null;
+    if (!zip) {
+      zip = await generateExportZip(ngoName, adRows);
+      lastZipRef.current = zip;
+      triggerDownload(zip.blob, zip.filename);
+    }
+    setExportedFiles({ zipFilename: zip.filename, xlsxFilename: zip.xlsxFilename, pyFilename: zip.pyFilename });
     const result = await submitToKawanBantu({
       ngoName: ngoName.trim(),
       submissionDate: zip.submissionDate,
@@ -131,8 +143,16 @@ export default function App() {
       zipBase64: bytesToBase64(zip.bytes),
     });
     localStorage.removeItem(STORAGE_KEY);
-    setExportedFiles({ zipFilename: zip.filename, xlsxFilename: zip.xlsxFilename, pyFilename: zip.pyFilename });
+    lastZipRef.current = null;
     setSubmission({ submissionId: result.submissionId, receivedAt: result.receivedAt });
+    setScreen('success');
+  }
+
+  // Sending failed but the ZIP is already downloaded: the NGO sends it via WhatsApp instead.
+  function handleContinueWithoutSend() {
+    localStorage.removeItem(STORAGE_KEY);
+    lastZipRef.current = null;
+    setSubmission(null);
     setScreen('success');
   }
 
@@ -201,6 +221,7 @@ export default function App() {
             onBack={() => setScreen('form')}
             onExport={handleExport}
             onSubmit={handleSubmit}
+            onContinueWithoutSend={handleContinueWithoutSend}
           />
         )}
 

@@ -18,7 +18,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, submission, onSt
           <h1 className="text-2xl font-bold text-[#2B2033] mb-2">Submission Terkirim!</h1>
           <p className="text-sm text-gray-500 mb-6">
             Tim KawanBantu sudah menerima submission <span className="font-semibold text-[#2B2033]">{ngoName}</span>.
-            Kamu tidak perlu mengirim file lewat WhatsApp lagi.
+            Kamu tidak perlu mengirim file lewat WhatsApp lagi. Salinan file ZIP juga sudah tersimpan di folder Downloads.
           </p>
           <div className="w-full bg-white rounded-2xl border-2 border-[#2A9E99] shadow-sm p-5 mb-6 text-left">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Nomor Submission</p>
