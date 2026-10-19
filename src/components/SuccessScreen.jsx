@@ -1,76 +1,80 @@
-import { Icon } from './ui';
+import { Icon, Fig } from './ui';
+
+// The teller's validation stamp: violet ink ring with the submission number.
+function Stamp({ submission }) {
+  return (
+    <div className="stamp-in inline-flex flex-col items-center justify-center text-center rounded-xl border-[3px] border-plum text-plum-deep px-4 py-2.5 -rotate-6">
+      <span className="text-sm font-extrabold tracking-[0.2em]">DITERIMA</span>
+      <Fig className="text-[11px] mt-1">{submission.receivedAt.slice(0, 10)}</Fig>
+      <Fig className="text-[11px]">KawanBantu</Fig>
+    </div>
+  );
+}
 
 export default function SuccessScreen({ ngoName, exportedFiles, submission, onStartOver, onEdit, onReDownload }) {
   const submitted = Boolean(submission);
 
   return (
-    <div className="max-w-lg mx-auto pt-6 sm:pt-10 pb-24">
-      <div className="w-14 h-14 rounded-full bg-brand text-white flex items-center justify-center mb-5 shadow-[0_6px_16px_-6px_rgb(42_158_153/0.6)]">
-        <Icon name="check" className="w-7 h-7" strokeWidth={2.5} />
-      </div>
-
-      {submitted ? (
-        <>
-          <h1 className="text-2xl font-bold text-ink mb-2">Submission terkirim</h1>
-          <p className="text-sm text-ink-soft leading-relaxed mb-6">
-            Tim KawanBantu sudah menerima submission <span className="font-semibold text-ink">{ngoName}</span>.
-            Tidak perlu kirim lewat WhatsApp lagi. Salinan file ZIP juga tersimpan di folder Downloads.
-          </p>
-
-          <section className="card p-5 mb-4">
-            <p className="text-sm text-ink-soft">Nomor submission</p>
-            <p className="text-xl font-bold text-brand-deep break-all select-all tabular-nums mt-0.5">{submission.submissionId}</p>
-            <p className="text-xs text-ink-faint mt-1.5">
-              Diterima {submission.receivedAt} WIB. Sebutkan nomor ini kalau menanyakan status iklan ke tim KawanBantu.
+    <div className="max-w-xl mx-auto pt-4 sm:pt-8 pb-24">
+      <section className="leaf p-6 sm:p-8 mb-4">
+        {submitted ? (
+          <>
+            <div className="flex items-start justify-between gap-6 mb-5">
+              <div>
+                <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Submission Terkirim</h1>
+                <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
+                  Tim KawanBantu sudah menerima submission <span className="font-semibold text-ink">{ngoName}</span>.
+                  Tidak perlu kirim lewat WhatsApp lagi.
+                </p>
+              </div>
+              <div className="hidden sm:block shrink-0 pt-1"><Stamp submission={submission} /></div>
+            </div>
+            <div className="sm:hidden mb-5"><Stamp submission={submission} /></div>
+            <dl className="border-t border-line pt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-sm">
+              <dt className="text-ink-soft">Nomor submission</dt>
+              <dd className="font-mono font-medium text-ink break-all select-all">{submission.submissionId}</dd>
+              <dt className="text-ink-soft">Salinan ZIP</dt>
+              <dd className="text-ink break-all">Tersimpan di folder Downloads</dd>
+            </dl>
+            <p className="text-[13px] text-ink-faint mt-3">Sebutkan nomor ini kalau menanyakan status iklan ke tim KawanBantu.</p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">File ZIP Sudah Diunduh</h1>
+            <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
+              Satu langkah lagi: kirim file ini ke tim KawanBantu lewat WhatsApp atau grup chat.
             </p>
-          </section>
-
-          <section className="rounded-2xl bg-brand-tint p-5 mb-8">
-            <h2 className="text-sm font-bold text-ink mb-1.5">Satu hal dari kamu</h2>
-            <p className="text-sm text-ink-soft leading-relaxed">
-              Terima permintaan Partnership Ads dari @kawanbantu di Instagram, supaya iklan bisa jalan dengan identitas NGO-mu.
-            </p>
-          </section>
-        </>
-      ) : (
-        <>
-          <h1 className="text-2xl font-bold text-ink mb-2">File ZIP sudah diunduh</h1>
-          <p className="text-sm text-ink-soft leading-relaxed mb-6">
-            Satu langkah lagi: kirim file ini ke tim KawanBantu lewat WhatsApp atau grup chat.
-          </p>
-
-          <section className="card p-5 mb-4">
-            <div className="flex items-start gap-3">
-              <span className="w-9 h-9 rounded-lg bg-cream text-ink-soft flex items-center justify-center shrink-0">
+            <div className="flex items-start gap-3 border-t border-line pt-4 mt-5">
+              <span className="w-9 h-9 rounded-lg bg-paper text-brand-deep flex items-center justify-center shrink-0">
                 <Icon name="download" />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink break-all">{exportedFiles?.zipFilename}</p>
-                <p className="text-xs text-ink-soft mt-0.5">Ada di folder Downloads. Kirim 1 file ZIP ini saja, tidak perlu di-extract.</p>
+                <p className="text-[13px] text-ink-soft mt-0.5">Ada di folder Downloads. Kirim 1 file ZIP ini saja, tidak perlu di-extract.</p>
               </div>
             </div>
-          </section>
+          </>
+        )}
+      </section>
 
-          <section className="rounded-2xl bg-brand-tint p-5 mb-8">
-            <h2 className="text-sm font-bold text-ink mb-1.5">Jangan lupa</h2>
-            <p className="text-sm text-ink-soft leading-relaxed">
-              Terima permintaan Partnership Ads dari @kawanbantu di Instagram, supaya iklan bisa jalan dengan identitas NGO-mu.
-            </p>
-          </section>
-        </>
-      )}
+      <section className="rounded-2xl bg-brand-tint px-6 py-5 mb-8">
+        <h2 className="text-sm font-bold text-ink mb-1">{submitted ? 'Satu hal dari kamu' : 'Jangan lupa'}</h2>
+        <p className="text-sm text-ink-soft leading-relaxed">
+          Terima permintaan Partnership Ads dari @kawanbantu di Instagram, supaya iklan bisa jalan dengan identitas NGO-mu.
+        </p>
+      </section>
 
       <div className="flex flex-col gap-2.5">
         <button type="button" onClick={onReDownload} className="btn-secondary w-full">
-          <Icon name="download" /> {submitted ? 'Download salinan ZIP' : 'Download ulang ZIP'}
+          <Icon name="download" /> {submitted ? 'Download Salinan ZIP' : 'Download Ulang File ZIP'}
         </button>
         {!submitted && (
           <button type="button" onClick={onEdit} className="btn-ghost justify-center w-full !py-2.5">
-            <Icon name="arrowLeft" /> Edit submission
+            <Icon name="arrowLeft" /> Edit Submission
           </button>
         )}
         <button type="button" onClick={onStartOver} className="btn-ghost justify-center w-full !py-2.5">
-          <Icon name="plus" /> Buat submission baru
+          <Icon name="plus" /> Buat Submission Baru
         </button>
       </div>
     </div>

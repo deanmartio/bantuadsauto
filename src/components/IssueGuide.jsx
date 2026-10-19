@@ -24,7 +24,7 @@ export default function IssueGuide({ issues, open, onClose, onJump }) {
       ref={ref}
       role="dialog"
       aria-label="Yang belum lengkap"
-      className="fixed bottom-[72px] right-4 left-4 sm:left-auto sm:w-[380px] z-50 card !shadow-[0_12px_32px_-12px_rgb(43_32_51/0.35)] max-h-[60vh] flex flex-col"
+      className="fixed bottom-[76px] right-4 left-4 sm:left-auto sm:w-[400px] z-50 leaf !shadow-[0_12px_32px_-12px_rgb(43_32_51/0.35)] max-h-[60vh] flex flex-col"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-line">
         <p className="text-sm font-bold text-ink">{issues.length} hal belum lengkap</p>
@@ -39,7 +39,7 @@ export default function IssueGuide({ issues, open, onClose, onJump }) {
               type="button"
               onClick={() => onJump(issue)}
               disabled={!issue.id}
-              className="w-full flex items-start gap-2.5 px-4 py-2 text-left text-sm text-ink hover:bg-cream transition-colors duration-150 disabled:cursor-default"
+              className="w-full flex items-start gap-2.5 px-4 py-2 text-left text-sm text-ink hover:bg-paper transition-colors duration-150 disabled:cursor-default"
             >
               <Icon name="alert" className="w-4 h-4 mt-0.5 text-danger shrink-0" />
               <span className="flex-1">{issue.message}</span>

@@ -6,6 +6,7 @@ import ReviewScreen from './components/ReviewScreen';
 import SuccessScreen from './components/SuccessScreen';
 import { getIssues, getDuplicateAdNames } from './utils/validation';
 import IssueGuide from './components/IssueGuide';
+import SidePanel from './components/SidePanel';
 import { Icon } from './components/ui';
 import { generateExportZip, bytesToBase64, getSubmissionSummary } from './utils/zipGenerator';
 import { submitToKawanBantu } from './utils/submitService';
@@ -80,6 +81,7 @@ export default function App() {
   const [showIssues, setShowIssues] = useState(false); // field-level errors appear after the first "Lanjut" attempt
   const [guideOpen, setGuideOpen] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+  const [activeRowId, setActiveRowId] = useState(null); // the card being edited; the side panel follows it
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -103,12 +105,24 @@ export default function App() {
   }, []);
 
   const handleAddRow = useCallback(() => {
-    setAdRows(prev => [...prev, createEmptyRow()]);
+    const row = createEmptyRow();
+    setAdRows(prev => [...prev, row]);
+    setActiveRowId(row.id);
+    requestAnimationFrame(() => document.getElementById(`ad-${row.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }, []);
 
   const issues = getIssues(ngoName, adRows);
   const hasErrors = issues.length > 0;
   const duplicateCount = getDuplicateAdNames(adRows).size;
+
+  const currentRowId = adRows.some(r => r.id === activeRowId) ? activeRowId : adRows[0]?.id;
+
+  // Ledger line clicked: open that card, bring it into view, make it the active one.
+  function jumpToRow(rowId) {
+    setActiveRowId(rowId);
+    if (collapsedIds.has(rowId)) toggleCollapse(rowId);
+    requestAnimationFrame(() => document.getElementById(`ad-${rowId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
 
   function toggleCollapse(rowId) {
     setCollapsedIds(prev => {
@@ -215,46 +229,53 @@ export default function App() {
   const totalAds = getSubmissionSummary(adRows).adCount;
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-paper">
       <Header screen={screen} />
 
-      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-7 sm:py-9">
         {screen === 'form' && (
           <>
             <div className="mb-6 max-w-2xl">
-              <h1 className="text-2xl font-bold text-ink text-balance">Submission iklan BantuAds</h1>
-              <p className="text-sm text-ink-soft mt-1.5 leading-relaxed">
-                Isi data iklan di bawah. Satu kartu untuk satu cerita atau halaman campaign. Setiap video,
-                gambar atau postingan di dalamnya jadi 1 iklan.
+              <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Submission Iklan</h1>
+              <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
+                Isi data iklan di bawah. Satu kartu untuk satu cerita atau halaman campaign; setiap video, gambar
+                atau postingan di dalamnya jadi 1 iklan.
               </p>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <TopFields
-                ngoName={ngoName}
-                onChange={handleTopChange}
-                error={showIssues && !ngoName.trim() ? 'Nama NGO wajib diisi.' : null}
-              />
-              <AdTable
-                adRows={adRows}
-                ngoName={ngoName}
-                issues={issues}
-                showIssues={showIssues}
-                collapsedIds={collapsedIds}
-                onToggleCollapse={toggleCollapse}
-                onUpdate={handleUpdateRow}
-                onDelete={handleDeleteRow}
-                onAdd={handleAddRow}
-              />
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
+              <div className="flex flex-col gap-4 min-w-0">
+                <TopFields
+                  ngoName={ngoName}
+                  onChange={handleTopChange}
+                  error={showIssues && !ngoName.trim() ? 'Nama NGO wajib diisi.' : null}
+                />
+                <AdTable
+                  adRows={adRows}
+                  issues={issues}
+                  showIssues={showIssues}
+                  collapsedIds={collapsedIds}
+                  activeRowId={currentRowId}
+                  onActivate={setActiveRowId}
+                  onToggleCollapse={toggleCollapse}
+                  onUpdate={handleUpdateRow}
+                  onDelete={handleDeleteRow}
+                  onAdd={handleAddRow}
+                />
+              </div>
+              <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:rounded-2xl" aria-label="Pratinjau dan rincian iklan">
+                <SidePanel ngoName={ngoName} adRows={adRows} activeRowId={currentRowId} onJump={jumpToRow} />
+              </aside>
             </div>
 
             <IssueGuide issues={issues} open={guideOpen && hasErrors} onClose={() => setGuideOpen(false)} onJump={jumpTo} />
 
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line z-40">
-              <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                <p className="text-xs text-ink-soft tabular-nums">
-                  <span className="font-semibold text-ink">{adRows.length} kartu</span> · {totalAds} iklan
-                  {duplicateCount > 0 && <span className="text-danger font-semibold"> · nama iklan dobel</span>}
+              <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-ink-soft">
+                  <span className="font-semibold text-ink"><span className="font-mono tabular-nums">{adRows.length}</span> kartu</span>
+                  {' · '}<span className="font-mono tabular-nums">{totalAds}</span> iklan
+                  {duplicateCount > 0 && <span className="text-danger font-semibold"> · ada nama iklan dobel</span>}
                 </p>
                 <div className="flex items-center gap-2">
                   {hasErrors && showIssues && (
@@ -263,14 +284,14 @@ export default function App() {
                       data-issue-toggle
                       onClick={() => setGuideOpen(o => !o)}
                       aria-expanded={guideOpen}
-                      className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-danger bg-danger-tint hover:brightness-95 transition"
+                      className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold text-danger bg-danger-tint hover:brightness-95 transition"
                     >
                       <Icon name="alert" className="w-4 h-4" />
-                      {issues.length} belum lengkap
+                      <span className="font-mono tabular-nums">{issues.length}</span> belum lengkap
                     </button>
                   )}
                   <button type="button" onClick={handleContinue} className="btn-primary">
-                    Lanjut ke review <Icon name="arrowRight" />
+                    Review Sebelum Kirim <Icon name="arrowRight" />
                   </button>
                 </div>
               </div>

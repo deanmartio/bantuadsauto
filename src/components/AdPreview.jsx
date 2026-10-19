@@ -24,7 +24,7 @@ function Media({ creative, index, total }) {
   const id = creative && !creative.isFolder ? driveFileId(creative.link) : null;
   const isVideo = !creative || creative.type === 'Video';
   return (
-    <div className="relative aspect-[4/5] bg-cream-deep overflow-hidden">
+    <div className="relative aspect-square bg-paper-deep overflow-hidden">
       {id && !failed ? (
         <img
           key={id}
@@ -70,7 +70,7 @@ export default function AdPreview({ ngoName, row }) {
 
   return (
     <figure className="m-0">
-      <div className="mx-auto w-full max-w-[300px] rounded-2xl border border-line bg-white overflow-hidden shadow-[0_6px_20px_-12px_rgb(43_32_51/0.35)]">
+      <div className="mx-auto w-full max-w-[280px] rounded-2xl border border-line bg-white overflow-hidden shadow-[0_6px_20px_-12px_rgb(43_32_51/0.35)]">
         <div className="flex items-center gap-2.5 px-3 py-2.5">
           <span className="w-8 h-8 rounded-full bg-brand-tint text-brand-deep flex items-center justify-center text-sm font-bold shrink-0">
             {name.charAt(0).toUpperCase()}
@@ -87,14 +87,14 @@ export default function AdPreview({ ngoName, row }) {
           {truncated && <span className="text-ink-faint">… lihat selengkapnya</span>}
         </p>
         <Media creative={creatives[idx]} index={idx} total={creatives.length} />
-        <div className="flex items-center gap-3 px-3 py-2.5 bg-cream">
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-paper">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase text-ink-faint truncate">{domain || 'link campaign'}</p>
+            <p className="text-[11px] uppercase text-ink-faint truncate">{domain || 'link campaign'}</p>
             <p className="text-[13px] font-semibold text-ink leading-tight line-clamp-2 break-words">
               {row.headline.trim() || <span className="text-ink-faint font-normal">Headline</span>}
             </p>
           </div>
-          <span className="shrink-0 text-xs font-semibold bg-cream-deep text-ink rounded-md px-2.5 py-1.5">
+          <span className="shrink-0 text-xs font-semibold bg-paper-deep text-ink rounded-md px-2.5 py-1.5">
             Pelajari Selengkapnya
           </span>
         </div>
@@ -113,8 +113,8 @@ export default function AdPreview({ ngoName, row }) {
           ))}
         </div>
       )}
-      <figcaption className="text-[11px] text-ink-faint text-center mt-2.5">
-        Perkiraan tampilan di feed. Tampilan asli di Instagram/Facebook bisa sedikit berbeda.
+      <figcaption className="text-xs text-ink-faint text-center mt-2.5">
+        Perkiraan tampilan di feed. Aslinya bisa sedikit berbeda.
       </figcaption>
     </figure>
   );

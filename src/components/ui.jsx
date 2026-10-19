@@ -43,20 +43,33 @@ export function Label({ htmlFor, children, required, aside }) {
 
 export function FieldError({ children }) {
   if (!children) return null;
-  return <p className="text-xs text-danger mt-1.5 font-medium">{children}</p>;
+  return <p className="text-[13px] text-danger mt-1.5 font-medium">{children}</p>;
 }
 
 export function Hint({ children }) {
-  return <p className="text-xs text-ink-soft mt-1.5 leading-relaxed">{children}</p>;
+  return <p className="text-[13px] text-ink-soft mt-1.5 leading-relaxed">{children}</p>;
 }
 
-// Character guide: neutral under the limit Meta shows before cutting text, amber past it. Never blocks.
-export function CharGuide({ value, limit, label }) {
+// Character budget against the point where Meta cuts the text (like a tape side that must not
+// overflow): a thin bar that fills in teal and turns amber past the cut. A guide, never a blocker.
+export function Budget({ value, limit, note }) {
   const n = [...(value || '')].length;
   const over = n > limit;
+  const pct = Math.min(100, Math.round((n / limit) * 100));
   return (
-    <span className={`text-xs tabular-nums ${over ? 'text-warn font-semibold' : 'text-ink-faint'}`} title={label}>
-      {n}/{limit}
-    </span>
+    <div className="mt-2">
+      <div className="h-1 rounded-full bg-paper-deep overflow-hidden" aria-hidden="true">
+        <div className={`h-full rounded-full transition-[width] duration-200 ease-out ${over ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-baseline justify-between gap-3 mt-1.5 text-xs">
+        <span className={over ? 'text-warn' : 'text-ink-soft'}>{over ? `Lewat ${n - limit} karakter dari batas tampil. ${note}` : note}</span>
+        <span className={`font-mono tabular-nums shrink-0 ${over ? 'text-warn font-medium' : 'text-ink-faint'}`}>{n}/{limit}</span>
+      </div>
+    </div>
   );
+}
+
+// Printed figure: ledger numbers, counts, submission numbers.
+export function Fig({ children, className = '' }) {
+  return <span className={`font-mono tabular-nums ${className}`}>{children}</span>;
 }

@@ -1,32 +1,37 @@
 @import "tailwindcss";
 
-/* KawanBantu palette. Teal leads (actions, selection); purple only pairs with it in the brand gradient. */
+/* KawanBantu brand on passbook paper. Teal does the work (actions, selection, printed numbers);
+   purple only appears in the primary button's brand gradient and the validation stamp. */
 @theme {
-  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, monospace;
   --color-ink: #2B2033;
-  --color-ink-soft: #5E5468;
-  --color-ink-faint: #8C8396;
-  --color-cream: #F7F2EA;
-  --color-cream-deep: #EFE7DA;
-  --color-line: #E4DCCF;
+  --color-ink-soft: #5C5466;
+  --color-ink-faint: #857E8E;
+  --color-paper: #F2F7F6;
+  --color-paper-deep: #E5EFED;
+  --color-line: #DCE6E4;
+  --color-line-strong: #C4D4D1;
   --color-brand: #2A9E99;
-  --color-brand-deep: #1F7C78;
-  --color-brand-tint: #E6F4F3;
+  --color-brand-deep: #1E7672;
+  --color-brand-tint: #E2F2F0;
   --color-plum: #8A59B3;
+  --color-plum-deep: #6E3F97;
   --color-danger: #C2413B;
   --color-danger-tint: #FBEDEC;
-  --color-warn: #A86A12;
-  --color-warn-tint: #FDF4E3;
+  --color-warn: #9A5F0E;
+  --color-warn-tint: #FDF3E1;
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    scrollbar-color: var(--color-line-strong) transparent;
   }
   body {
     margin: 0;
-    background-color: var(--color-cream);
+    background-color: var(--color-paper);
     color: var(--color-ink);
     caret-color: var(--color-brand);
   }
@@ -35,7 +40,7 @@
     min-height: 100vh;
   }
   ::selection {
-    background: color-mix(in srgb, var(--color-brand) 22%, transparent);
+    background: color-mix(in srgb, var(--color-brand) 24%, transparent);
     color: var(--color-ink);
   }
   :focus-visible {
@@ -49,25 +54,34 @@
   a {
     text-underline-offset: 3px;
   }
-  html {
-    scrollbar-color: var(--color-line) transparent;
-  }
 }
 
 @layer components {
+  /* A passbook leaf: white, hairline, flat. Only the leaf being edited lifts. */
+  .leaf {
+    background: #fff;
+    border: 1px solid var(--color-line);
+    border-radius: 0.875rem;
+    transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
+  }
+  .leaf-active {
+    border-color: var(--color-line-strong);
+    box-shadow: 0 1px 2px rgb(43 32 51 / 0.05), 0 14px 32px -18px rgb(30 118 114 / 0.45);
+  }
+
   .field {
     width: 100%;
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--color-line-strong);
     background: #fff;
     border-radius: 0.625rem;
     padding: 0.625rem 0.75rem;
-    font-size: 0.875rem;
-    line-height: 1.4;
+    font-size: 0.9375rem;
+    line-height: 1.45;
     color: var(--color-ink);
     transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
   }
   .field:hover {
-    border-color: #CFC4B4;
+    border-color: #A9BFBB;
   }
   .field:focus {
     outline: none;
@@ -81,18 +95,19 @@
   .field[aria-invalid='true']:focus {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 15%, transparent);
   }
+
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     border-radius: 0.75rem;
-    padding: 0.7rem 1.4rem;
-    font-size: 0.875rem;
+    padding: 0.75rem 1.4rem;
+    font-size: 0.9375rem;
     font-weight: 700;
     color: #fff;
-    background: linear-gradient(135deg, var(--color-brand), var(--color-plum));
-    box-shadow: 0 2px 6px -1px color-mix(in srgb, var(--color-plum) 35%, transparent);
+    background: linear-gradient(120deg, var(--color-brand) 10%, var(--color-plum) 100%);
+    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-plum) 70%, transparent);
     transition: filter 150ms ease-out, transform 150ms ease-out, opacity 150ms ease-out;
   }
   .btn-primary:hover:not(:disabled) {
@@ -111,8 +126,8 @@
     justify-content: center;
     gap: 0.5rem;
     border-radius: 0.75rem;
-    padding: 0.62rem 1.2rem;
-    font-size: 0.875rem;
+    padding: 0.68rem 1.2rem;
+    font-size: 0.9375rem;
     font-weight: 600;
     color: var(--color-brand-deep);
     background: #fff;
@@ -131,24 +146,37 @@
     align-items: center;
     gap: 0.375rem;
     border-radius: 0.5rem;
-    padding: 0.375rem 0.625rem;
-    font-size: 0.8125rem;
+    padding: 0.4rem 0.625rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--color-ink-soft);
     transition: background-color 150ms ease-out, color 150ms ease-out;
   }
   .btn-ghost:hover:not(:disabled) {
-    background: var(--color-cream);
+    background: var(--color-paper);
     color: var(--color-ink);
   }
   .btn-ghost:disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }
-  .card {
-    background: #fff;
-    border: 1px solid var(--color-line);
-    border-radius: 1rem;
-    box-shadow: 0 1px 2px rgb(43 32 51 / 0.04), 0 4px 12px -6px rgb(43 32 51 / 0.08);
+
+  /* Ledger line printing in, like a passbook line from the teller's printer. */
+  .print-in {
+    animation: print-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes print-in {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  .stamp-in {
+    animation: stamp-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes stamp-in {
+    from { opacity: 0; transform: rotate(-6deg) scale(1.25); }
+    to { opacity: 1; transform: rotate(-6deg) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .print-in, .stamp-in { animation: none; }
   }
 }

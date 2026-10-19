@@ -3,7 +3,7 @@ import { getDuplicateAdNames } from '../utils/validation';
 import { getSubmissionSummary } from '../utils/zipGenerator';
 import { getExpandedCreatives, getExpandedPosts, getLocalDateString } from '../utils/driveUtils';
 import { isSubmitEnabled } from '../utils/submitService';
-import { Icon } from './ui';
+import { Icon, Fig } from './ui';
 
 const MODE_LABEL = { drive: 'File dari Google Drive', existing_post: 'Postingan yang sudah ada', mixed: 'Drive dan postingan' };
 
@@ -30,11 +30,11 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
   return (
     <div className="max-w-3xl mx-auto pb-36">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink">Review sebelum dikirim</h1>
-        <p className="text-sm text-ink-soft mt-1.5">Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.</p>
+        <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Review Sebelum Kirim</h1>
+        <p className="text-[15px] text-ink-soft mt-2">Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.</p>
       </div>
 
-      <section className="card p-5 mb-4">
+      <section className="leaf p-5 mb-4">
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
           {[
             ['NGO', ngoName],
@@ -44,7 +44,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
           ].map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="text-xs text-ink-soft">{k}</dt>
-              <dd className="text-sm font-semibold text-ink mt-0.5 break-words tabular-nums">{v}</dd>
+              <dd className={`text-[15px] font-semibold text-ink mt-0.5 break-words ${k === 'Jumlah iklan' || k === 'Tanggal' ? 'font-mono font-medium tabular-nums' : ''}`}>{v}</dd>
             </div>
           ))}
         </dl>
@@ -61,8 +61,10 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
         {adRows.map((row, i) => {
           const isPost = row.source === 'post';
           const ads = isPost ? getExpandedPosts(row) : getExpandedCreatives(row);
+          // Same running numbers as the ledger beside the form.
+          const offset = adRows.slice(0, i).reduce((n, r) => n + (r.source === 'post' ? getExpandedPosts(r) : getExpandedCreatives(r)).length, 0);
           return (
-            <section key={row.id} className="card p-5">
+            <section key={row.id} className="leaf p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
                   <h2 className="text-base font-bold text-ink break-words">{row.adName.trim()}</h2>
@@ -71,8 +73,8 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                     {row.campaignLink.trim()}
                   </a>
                 </div>
-                <span className="text-xs font-semibold text-ink-soft bg-cream rounded-full px-2.5 py-1 shrink-0 tabular-nums">
-                  Kartu {i + 1} · {ads.length} iklan
+                <span className="text-xs font-semibold text-ink-soft bg-paper rounded-full px-2.5 py-1 shrink-0 tabular-nums">
+                  Kartu <Fig>{String(i + 1).padStart(2, '0')}</Fig> · <Fig>{ads.length}</Fig> iklan
                 </span>
               </div>
 
@@ -90,16 +92,19 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
               )}
 
               <div className="border-t border-line pt-3">
-                <p className="text-xs text-ink-soft mb-1.5">Iklan yang akan dibuat</p>
-                <ul className="flex flex-col gap-1">
+                <p className="text-xs font-semibold text-ink-soft mb-1">Iklan yang akan dibuat</p>
+                <ol className="flex flex-col">
                   {ads.map((ad, ai) => (
-                    <li key={ai} className="flex items-center gap-2 text-sm text-ink min-w-0">
-                      <Icon name={isPost ? 'link' : ad.type === 'Video' ? 'video' : 'image'} className="w-3.5 h-3.5 text-ink-faint shrink-0" />
-                      <span className="font-medium shrink-0">{ad.adName}</span>
-                      <span className="text-xs text-ink-faint truncate">{isPost ? ad.postLink : ad.filename}</span>
+                    <li key={ai} className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem] gap-x-2 items-baseline py-1.5 border-b border-line last:border-b-0 text-sm">
+                      <Fig className="text-xs text-brand-deep">{String(offset + ai + 1).padStart(3, '0')}</Fig>
+                      <span className="min-w-0">
+                        <span className="font-semibold text-ink">{ad.adName}</span>
+                        <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>
+                      </span>
+                      <Fig className="text-[11px] text-ink-soft text-right">{isPost ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</Fig>
                     </li>
                   ))}
-                </ul>
+                </ol>
               </div>
             </section>
           );
@@ -109,7 +114,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line z-40">
         {sendError && (
           <div className="border-b border-line bg-danger-tint" role="alert">
-            <div className="max-w-3xl mx-auto px-4 py-3 flex items-start gap-2.5">
+            <div className="max-w-3xl mx-auto px-4 sm:px-8 py-3 flex items-start gap-2.5">
               <Icon name="alert" className="w-4 h-4 mt-0.5 text-danger shrink-0" />
               <div className="text-sm">
                 <p className="font-semibold text-ink">{sendError}</p>
@@ -120,9 +125,9 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
             </div>
           </div>
         )}
-        <div className="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
           <button type="button" onClick={onBack} disabled={sending} className="btn-secondary">
-            <Icon name="arrowLeft" /> Kembali edit
+            <Icon name="arrowLeft" /> Kembali Edit
           </button>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {sendError && (
@@ -133,7 +138,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
             {canSubmit ? (
               <button type="button" onClick={handleSend} disabled={sending} className="btn-primary">
                 <Icon name="send" />
-                {sending ? 'Mengirim… jangan tutup halaman' : sendError ? 'Coba kirim lagi' : 'Kirim ke KawanBantu'}
+                {sending ? 'Mengirim… jangan tutup halaman' : sendError ? 'Coba Kirim Lagi' : 'Kirim ke KawanBantu'}
               </button>
             ) : (
               <button type="button" onClick={onExport} className="btn-primary">
@@ -143,7 +148,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
           </div>
         </div>
         {canSubmit && !sendError && (
-          <p className="max-w-3xl mx-auto px-4 pb-3 -mt-1 text-xs text-ink-faint sm:text-right">
+          <p className="max-w-3xl mx-auto px-4 sm:px-8 pb-3 -mt-1 text-xs text-ink-faint sm:text-right">
             Salinan file ZIP otomatis tersimpan di folder Downloads.
           </p>
         )}

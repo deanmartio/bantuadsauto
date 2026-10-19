@@ -5,9 +5,9 @@ export default function CreativeInput({ creative, index, total, inputId, invalid
   const isFolder = isFolderLink(creative.link);
 
   return (
-    <div className="rounded-xl border border-line bg-cream/60 p-2.5">
+    <div className="rounded-xl border border-line bg-paper/70 p-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-ink-faint w-4 text-center tabular-nums shrink-0">{index + 1}</span>
+        <span className="font-mono text-xs text-ink-faint w-5 shrink-0 tabular-nums">{index + 1}</span>
         <input
           id={inputId}
           type="url"
@@ -16,7 +16,7 @@ export default function CreativeInput({ creative, index, total, inputId, invalid
           placeholder="Tempel link Google Drive (file atau folder)"
           aria-label={`Link Google Drive creative ${index + 1}`}
           aria-invalid={invalid || undefined}
-          className="field !py-2 min-w-0 flex-1"
+          className="field min-w-0 flex-1"
         />
         {total > 1 && (
           <button
@@ -30,7 +30,7 @@ export default function CreativeInput({ creative, index, total, inputId, invalid
         )}
       </div>
 
-      <div className="mt-2 ml-6">
+      <div className="mt-2 ml-7 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="inline-flex rounded-lg border border-line bg-white p-0.5" role="group" aria-label="Jenis file">
           {[
             { value: 'Video', icon: 'video' },
@@ -54,7 +54,7 @@ export default function CreativeInput({ creative, index, total, inputId, invalid
       </div>
 
       {isFolder && (
-        <div className="mt-2.5 ml-6 rounded-lg bg-warn-tint px-3 py-2.5">
+        <div className="mt-2.5 ml-7 rounded-lg bg-warn-tint px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-warn">
               <Icon name="folder" className="w-3.5 h-3.5" />

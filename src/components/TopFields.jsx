@@ -3,8 +3,8 @@ import { fieldId } from '../utils/validation';
 
 export default function TopFields({ ngoName, onChange, error }) {
   return (
-    <section className="card p-4 sm:p-5">
-      <div className="max-w-md">
+    <section className="leaf px-5 py-4">
+      <div className="max-w-sm">
         <Label htmlFor={fieldId.ngoName()} required>Nama NGO</Label>
         <input
           id={fieldId.ngoName()}
