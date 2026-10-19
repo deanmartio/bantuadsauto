@@ -1,42 +1,55 @@
 import { isPostRow, isPostLink } from './driveUtils';
 
-export function validate(ngoName, adRows) {
-  const errors = [];
+// DOM ids for every field that can be missing, so the "belum lengkap" guide can jump to it.
+export const fieldId = {
+  ngoName: () => 'field-ngo-name',
+  adName: row => `field-ad-${row.id}-name`,
+  campaignLink: row => `field-ad-${row.id}-link`,
+  creative: (row, ci) => `field-ad-${row.id}-creative-${ci}`,
+  post: (row, pi) => `field-ad-${row.id}-post-${pi}`,
+  primaryText: row => `field-ad-${row.id}-primary`,
+  headline: row => `field-ad-${row.id}-headline`,
+};
 
-  if (!ngoName.trim()) errors.push('NGO Name wajib diisi.');
-  if (adRows.length === 0) errors.push('Minimal 1 iklan harus ditambahkan.');
+// Every problem that blocks sending, with the field it belongs to.
+// Each issue: { id, rowId, message } where id is the DOM id of the field.
+export function getIssues(ngoName, adRows) {
+  const issues = [];
+  const add = (id, rowId, message) => issues.push({ id, rowId, message });
 
-  const names = adRows.map(r => r.adName.trim().toLowerCase());
-  const duplicates = names.filter((n, i) => n && names.indexOf(n) !== i);
+  if (!ngoName.trim()) add(fieldId.ngoName(), null, 'Nama NGO wajib diisi.');
+  if (adRows.length === 0) add(null, null, 'Minimal 1 iklan harus ditambahkan.');
 
   adRows.forEach((row, i) => {
-    if (!row.adName.trim()) errors.push(`Baris ${i + 1}: Nama iklan wajib diisi.`);
-    if (!row.campaignLink.trim()) errors.push(`Baris ${i + 1}: Link Halaman Campaign wajib diisi.`);
+    const n = i + 1;
+    if (!row.adName.trim()) add(fieldId.adName(row), row.id, `Iklan ${n}: Nama iklan wajib diisi.`);
+    if (!row.campaignLink.trim()) add(fieldId.campaignLink(row), row.id, `Iklan ${n}: Link halaman campaign wajib diisi.`);
+
     if (isPostRow(row)) {
-      // Existing post: the post's own media and copy are used, so only the post link is needed.
+      // Existing post: the post's own media and copy are used, so only the post links are needed.
       const links = row.postLinks || [];
-      if (links.length === 0) errors.push(`Baris ${i + 1}: Minimal 1 link postingan harus diisi.`);
+      if (links.length === 0) add(null, row.id, `Iklan ${n}: Minimal 1 link postingan harus diisi.`);
       links.forEach((l, li) => {
-        if (!l.trim()) errors.push(`Baris ${i + 1}, postingan ${li + 1}: Link tidak boleh kosong.`);
-        else if (!isPostLink(l)) errors.push(`Baris ${i + 1}, postingan ${li + 1}: Harus link Instagram atau Facebook (https://...).`);
+        if (!l.trim()) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Link belum diisi.`);
+        else if (!isPostLink(l)) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Harus link Instagram atau Facebook (https://...).`);
       });
       return;
     }
-    if (row.creatives.length === 0 || row.creatives.every(c => !c.link.trim())) {
-      errors.push(`Baris ${i + 1}: Minimal 1 link creative harus diisi.`);
-    }
+
+    if (row.creatives.length === 0) add(null, row.id, `Iklan ${n}: Minimal 1 link creative harus diisi.`);
     row.creatives.forEach((c, ci) => {
-      if (!c.link.trim()) errors.push(`Baris ${i + 1}, creative ${ci + 1}: Link tidak boleh kosong.`);
+      if (!c.link.trim()) add(fieldId.creative(row, ci), row.id, `Iklan ${n}, creative ${ci + 1}: Link Google Drive belum diisi.`);
     });
-    if (!row.primaryText.trim()) {
-      errors.push(`Baris ${i + 1}: Primary text wajib diisi.`);
-    }
-    if (!row.headline.trim()) {
-      errors.push(`Baris ${i + 1}: Headline wajib diisi.`);
-    }
+    if (!row.primaryText.trim()) add(fieldId.primaryText(row), row.id, `Iklan ${n}: Primary text wajib diisi.`);
+    if (!row.headline.trim()) add(fieldId.headline(row), row.id, `Iklan ${n}: Headline wajib diisi.`);
   });
 
-  return { errors, hasDuplicates: duplicates.length > 0 };
+  return issues;
+}
+
+export function validate(ngoName, adRows) {
+  const errors = getIssues(ngoName, adRows).map(i => i.message);
+  return { errors, hasDuplicates: getDuplicateAdNames(adRows).size > 0 };
 }
 
 export function getDuplicateAdNames(adRows) {

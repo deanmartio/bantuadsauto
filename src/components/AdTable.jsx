@@ -1,18 +1,24 @@
 import AdRow from './AdRow';
+import { Icon } from './ui';
 import { getDuplicateAdNames } from '../utils/validation';
 
-export default function AdTable({ adRows, onUpdate, onDelete, onAdd }) {
+export default function AdTable({ adRows, ngoName, issues, showIssues, collapsedIds, onToggleCollapse, onUpdate, onDelete, onAdd }) {
   const duplicateNames = getDuplicateAdNames(adRows);
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {adRows.map((row, i) => (
         <AdRow
           key={row.id}
           row={row}
           index={i}
           totalRows={adRows.length}
+          ngoName={ngoName}
           isDuplicate={duplicateNames.has(row.adName.trim().toLowerCase())}
+          issues={issues.filter(x => x.rowId === row.id)}
+          showIssues={showIssues}
+          collapsed={collapsedIds.has(row.id)}
+          onToggleCollapse={() => onToggleCollapse(row.id)}
           onUpdate={onUpdate}
           onDelete={onDelete}
         />
@@ -20,9 +26,9 @@ export default function AdTable({ adRows, onUpdate, onDelete, onAdd }) {
       <button
         type="button"
         onClick={onAdd}
-        className="w-full border-2 border-dashed border-[#2A9E99] text-[#2A9E99] font-semibold rounded-2xl py-3 text-sm hover:bg-teal-50 transition-colors"
+        className="flex items-center justify-center gap-2 w-full rounded-2xl border-2 border-dashed border-brand/50 text-brand-deep font-semibold py-4 text-sm hover:bg-brand-tint hover:border-brand transition-colors duration-150"
       >
-        + Tambah Iklan
+        <Icon name="plus" /> Tambah iklan
       </button>
     </div>
   );

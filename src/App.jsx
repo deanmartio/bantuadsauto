@@ -4,8 +4,10 @@ import TopFields from './components/TopFields';
 import AdTable from './components/AdTable';
 import ReviewScreen from './components/ReviewScreen';
 import SuccessScreen from './components/SuccessScreen';
-import { validate } from './utils/validation';
-import { generateExportZip, bytesToBase64 } from './utils/zipGenerator';
+import { getIssues, getDuplicateAdNames } from './utils/validation';
+import IssueGuide from './components/IssueGuide';
+import { Icon } from './components/ui';
+import { generateExportZip, bytesToBase64, getSubmissionSummary } from './utils/zipGenerator';
 import { submitToKawanBantu } from './utils/submitService';
 
 const STORAGE_KEY = 'bantuads_form_draft';
@@ -73,8 +75,15 @@ export default function App() {
   const [ngoName, setNgoName] = useState(draft?.ngoName ?? '');
   const [adRows, setAdRows] = useState(draft?.adRows ?? [createEmptyRow()]);
   const [exportedFiles, setExportedFiles] = useState(null); // { zipFilename, xlsxFilename, pyFilename }
-  const [submission, setSubmission] = useState(null);
-  const lastZipRef = useRef(null); // the ZIP already downloaded, reused when re-sending after a failure // { submissionId, receivedAt } after "Kirim ke KawanBantu"
+  const [submission, setSubmission] = useState(null); // { submissionId, receivedAt } after "Kirim ke KawanBantu"
+  const lastZipRef = useRef(null); // the ZIP already downloaded, reused when re-sending after a failure
+  const [showIssues, setShowIssues] = useState(false); // field-level errors appear after the first "Lanjut" attempt
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [screen]);
 
   // Auto-save draft on every change
   useEffect(() => {
@@ -97,8 +106,39 @@ export default function App() {
     setAdRows(prev => [...prev, createEmptyRow()]);
   }, []);
 
-  const { errors } = validate(ngoName, adRows);
-  const hasErrors = errors.length > 0;
+  const issues = getIssues(ngoName, adRows);
+  const hasErrors = issues.length > 0;
+  const duplicateCount = getDuplicateAdNames(adRows).size;
+
+  function toggleCollapse(rowId) {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId); else next.add(rowId);
+      return next;
+    });
+  }
+
+  // Open the ad that holds the field (if collapsed), then scroll to it and focus it.
+  function jumpTo(issue) {
+    setGuideOpen(false);
+    if (issue.rowId != null && collapsedIds.has(issue.rowId)) toggleCollapse(issue.rowId);
+    requestAnimationFrame(() => {
+      const el = issue.id && document.getElementById(issue.id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus({ preventScroll: true });
+    });
+  }
+
+  function handleContinue() {
+    if (hasErrors) {
+      setShowIssues(true);
+      jumpTo(issues[0]);
+      setGuideOpen(true);
+      return;
+    }
+    setScreen('review');
+  }
 
   function triggerDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -167,50 +207,76 @@ export default function App() {
     setAdRows([createEmptyRow()]);
     setExportedFiles(null);
     setSubmission(null);
+    setShowIssues(false);
+    setCollapsedIds(new Set());
     setScreen('form');
   }
 
-  return (
-    <div className="min-h-screen bg-[#F7F2EA]">
-      <Header />
+  const totalAds = getSubmissionSummary(adRows).adCount;
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
+  return (
+    <div className="min-h-screen bg-cream">
+      <Header screen={screen} />
+
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
         {screen === 'form' && (
           <>
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-[#2B2033]">Submission Iklan</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Isi form di bawah lalu klik "Review Sebelum Export" untuk mengunduh file submission.
+            <div className="mb-6 max-w-2xl">
+              <h1 className="text-2xl font-bold text-ink text-balance">Submission iklan BantuAds</h1>
+              <p className="text-sm text-ink-soft mt-1.5 leading-relaxed">
+                Isi data iklan di bawah. Satu kartu untuk satu cerita atau halaman campaign. Setiap video,
+                gambar atau postingan di dalamnya jadi 1 iklan.
               </p>
             </div>
 
-            <TopFields ngoName={ngoName} onChange={handleTopChange} />
-
-            <AdTable
-              adRows={adRows}
-              onUpdate={handleUpdateRow}
-              onDelete={handleDeleteRow}
-              onAdd={handleAddRow}
-            />
-
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex justify-end items-center gap-3 z-40">
-              {hasErrors && (
-                <span className="text-xs text-gray-400 hidden sm:inline">
-                  Lengkapi semua field untuk melanjutkan
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setScreen('review')}
-                disabled={hasErrors}
-                className="font-bold rounded-xl px-6 py-2.5 text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
-              >
-                Review Sebelum Export →
-              </button>
+            <div className="flex flex-col gap-4">
+              <TopFields
+                ngoName={ngoName}
+                onChange={handleTopChange}
+                error={showIssues && !ngoName.trim() ? 'Nama NGO wajib diisi.' : null}
+              />
+              <AdTable
+                adRows={adRows}
+                ngoName={ngoName}
+                issues={issues}
+                showIssues={showIssues}
+                collapsedIds={collapsedIds}
+                onToggleCollapse={toggleCollapse}
+                onUpdate={handleUpdateRow}
+                onDelete={handleDeleteRow}
+                onAdd={handleAddRow}
+              />
             </div>
 
-            <div className="h-20" />
+            <IssueGuide issues={issues} open={guideOpen && hasErrors} onClose={() => setGuideOpen(false)} onJump={jumpTo} />
+
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line z-40">
+              <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <p className="text-xs text-ink-soft tabular-nums">
+                  <span className="font-semibold text-ink">{adRows.length} kartu</span> · {totalAds} iklan
+                  {duplicateCount > 0 && <span className="text-danger font-semibold"> · nama iklan dobel</span>}
+                </p>
+                <div className="flex items-center gap-2">
+                  {hasErrors && showIssues && (
+                    <button
+                      type="button"
+                      data-issue-toggle
+                      onClick={() => setGuideOpen(o => !o)}
+                      aria-expanded={guideOpen}
+                      className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-danger bg-danger-tint hover:brightness-95 transition"
+                    >
+                      <Icon name="alert" className="w-4 h-4" />
+                      {issues.length} belum lengkap
+                    </button>
+                  )}
+                  <button type="button" onClick={handleContinue} className="btn-primary">
+                    Lanjut ke review <Icon name="arrowRight" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="h-24" />
           </>
         )}
 
