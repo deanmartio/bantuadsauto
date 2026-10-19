@@ -1,22 +1,24 @@
 @import "tailwindcss";
 
-/* KawanBantu brand on passbook paper. Teal does the work (actions, selection, printed numbers);
-   purple only appears in the primary button's brand gradient and the validation stamp. */
+/* KawanBantu brand, 70:20:10. About 70% calm neutrals (lavender-grey ground, white leaves),
+   20% teal for actions, focus and states, 10% purple for identity: card numbers, section markers,
+   ledger figures, the current step and the stamp. The primary button carries the full teal-purple gradient. */
 @theme {
-  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Martian Mono', ui-monospace, monospace;
   --color-ink: #2B2033;
   --color-ink-soft: #5C5466;
   --color-ink-faint: #6E6779;
-  --color-paper: #F2F7F6;
-  --color-paper-deep: #E5EFED;
-  --color-line: #DCE6E4;
-  --color-line-strong: #C4D4D1;
+  --color-paper: #F6F5F9;
+  --color-paper-deep: #ECEAF2;
+  --color-line: #E4E1EB;
+  --color-line-strong: #CDC8D8;
   --color-brand: #2A9E99;
   --color-brand-deep: #1E7672;
   --color-brand-tint: #E2F2F0;
   --color-plum: #8A59B3;
   --color-plum-deep: #6E3F97;
+  --color-plum-tint: #F2ECF8;
   --color-danger: #C2413B;
   --color-danger-tint: #FBEDEC;
   --color-warn: #9A5F0E;
@@ -65,8 +67,8 @@
     transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
   }
   .leaf-active {
-    border-color: var(--color-line-strong);
-    box-shadow: 0 1px 2px rgb(43 32 51 / 0.05), 0 14px 32px -18px rgb(30 118 114 / 0.45);
+    border-color: color-mix(in srgb, var(--color-plum) 30%, var(--color-line-strong));
+    box-shadow: 0 1px 2px rgb(43 32 51 / 0.05), 0 16px 36px -20px rgb(110 63 151 / 0.45);
   }
 
   .field {
@@ -75,13 +77,13 @@
     background: #fff;
     border-radius: 0.625rem;
     padding: 0.625rem 0.75rem;
-    font-size: 0.9375rem;
-    line-height: 1.45;
+    font-size: 0.875rem;
+    line-height: 1.5;
     color: var(--color-ink);
     transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
   }
   .field:hover {
-    border-color: #A9BFBB;
+    border-color: #B5AEC4;
   }
   .field:focus {
     outline: none;
@@ -176,7 +178,16 @@
     from { opacity: 0; transform: rotate(-6deg) scale(1.25); }
     to { opacity: 1; transform: rotate(-6deg) scale(1); }
   }
+  /* Moving sheen on the upload bar so it never looks frozen. */
+  .progress-sheen {
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+    animation: sheen 1.2s linear infinite;
+  }
+  @keyframes sheen {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .print-in, .stamp-in { animation: none; }
+    .print-in, .stamp-in, .progress-sheen { animation: none; }
   }
 }

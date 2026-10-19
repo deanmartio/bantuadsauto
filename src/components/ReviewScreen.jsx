@@ -4,6 +4,7 @@ import { getSubmissionSummary } from '../utils/zipGenerator';
 import { getExpandedCreatives, getExpandedPosts, getLocalDateString } from '../utils/driveUtils';
 import { isSubmitEnabled } from '../utils/submitService';
 import { Icon, Fig } from './ui';
+import SendProgress from './SendProgress';
 
 const MODE_LABEL = { drive: 'File dari Google Drive', existing_post: 'Postingan yang sudah ada', mixed: 'Drive dan postingan' };
 
@@ -14,23 +15,26 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
   const [downloaded, setDownloaded] = useState(false); // ZIP already saved; a retry only re-sends
+  const [stage, setStage] = useState(null);
+  const [bytes, setBytes] = useState(0);
 
   async function handleSend() {
     setSending(true);
     setSendError('');
     try {
-      await onSubmit({ retry: downloaded });
+      await onSubmit({ retry: downloaded, onStage: (st, size) => { setStage(st); if (size) setBytes(size); } });
     } catch (err) {
       setDownloaded(true);
       setSendError(err.message || 'Gagal mengirim.');
       setSending(false);
+      setStage(null);
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto pb-36">
+    <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Review Sebelum Kirim</h1>
+        <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Review Sebelum Kirim</h1>
         <p className="text-[15px] text-ink-soft mt-2">Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.</p>
       </div>
 
@@ -96,7 +100,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                 <ol className="flex flex-col">
                   {ads.map((ad, ai) => (
                     <li key={ai} className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem] gap-x-2 items-baseline py-1.5 border-b border-line last:border-b-0 text-sm">
-                      <Fig className="text-xs text-brand-deep">{String(offset + ai + 1).padStart(3, '0')}</Fig>
+                      <Fig className="text-xs text-plum-deep">{String(offset + ai + 1).padStart(3, '0')}</Fig>
                       <span className="min-w-0">
                         <span className="font-semibold text-ink">{ad.adName}</span>
                         <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>
@@ -111,46 +115,47 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
         })}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line z-40">
-        {sendError && (
-          <div className="border-b border-line bg-danger-tint" role="alert">
-            <div className="max-w-3xl mx-auto px-4 sm:px-8 py-3 flex items-start gap-2.5">
-              <Icon name="alert" className="w-4 h-4 mt-0.5 text-danger shrink-0" />
-              <div className="text-sm">
-                <p className="font-semibold text-ink">{sendError}</p>
-                <p className="text-ink-soft mt-0.5">
-                  File ZIP sudah tersimpan di folder Downloads. Coba kirim lagi, atau kirim file itu ke tim KawanBantu via WhatsApp.
-                </p>
+      <div className="mt-6">
+        {sending && stage ? (
+          <SendProgress stage={stage} bytes={bytes} />
+        ) : (
+          <section className="leaf p-5 sm:p-6">
+            {sendError && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-danger-tint px-4 py-3 mb-4" role="alert">
+                <Icon name="alert" className="w-4 h-4 mt-0.5 text-danger shrink-0" />
+                <div className="text-sm">
+                  <p className="font-semibold text-ink">{sendError}</p>
+                  <p className="text-ink-soft mt-0.5">
+                    File ZIP sudah tersimpan di folder Downloads. Coba kirim lagi, atau kirim file itu ke tim KawanBantu via WhatsApp.
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button type="button" onClick={onBack} className="btn-secondary">
+                <Icon name="arrowLeft" /> Kembali Edit
+              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {sendError && (
+                  <button type="button" onClick={onContinueWithoutSend} className="btn-ghost">
+                    Saya kirim via WhatsApp saja
+                  </button>
+                )}
+                {canSubmit ? (
+                  <button type="button" onClick={handleSend} className="btn-primary">
+                    <Icon name="send" /> {sendError ? 'Coba Kirim Lagi' : 'Kirim ke KawanBantu'}
+                  </button>
+                ) : (
+                  <button type="button" onClick={onExport} className="btn-primary">
+                    <Icon name="download" /> Download ZIP
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-        )}
-        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-          <button type="button" onClick={onBack} disabled={sending} className="btn-secondary">
-            <Icon name="arrowLeft" /> Kembali Edit
-          </button>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {sendError && (
-              <button type="button" onClick={onContinueWithoutSend} disabled={sending} className="btn-ghost">
-                Saya kirim via WhatsApp saja
-              </button>
+            {canSubmit && !sendError && (
+              <p className="text-[13px] text-ink-soft mt-3 sm:text-right">Salinan file ZIP otomatis tersimpan di folder Downloads.</p>
             )}
-            {canSubmit ? (
-              <button type="button" onClick={handleSend} disabled={sending} className="btn-primary">
-                <Icon name="send" />
-                {sending ? 'Mengirim… jangan tutup halaman' : sendError ? 'Coba Kirim Lagi' : 'Kirim ke KawanBantu'}
-              </button>
-            ) : (
-              <button type="button" onClick={onExport} className="btn-primary">
-                <Icon name="download" /> Download ZIP
-              </button>
-            )}
-          </div>
-        </div>
-        {canSubmit && !sendError && (
-          <p className="max-w-3xl mx-auto px-4 sm:px-8 pb-3 -mt-1 text-xs text-ink-faint sm:text-right">
-            Salinan file ZIP otomatis tersimpan di folder Downloads.
-          </p>
+          </section>
         )}
       </div>
     </div>

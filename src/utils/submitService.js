@@ -5,14 +5,14 @@ export const isSubmitEnabled = () => Boolean(SUBMIT_URL);
 // Sends the ZIP to the KawanBantu intake endpoint. No Content-Type header on purpose:
 // a plain-text body keeps this a "simple" request, so the browser skips the CORS
 // preflight that Apps Script cannot answer.
-export async function submitToKawanBantu({ ngoName, submissionDate, adCount, mode, postLinks, zipName, zipBase64 }) {
+export async function submitToKawanBantu({ ngoName, submissionDate, adCount, mode, postLinks, zipName, zipBase64, replacesSubmissionId }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 120000);
   let res;
   try {
     res = await fetch(SUBMIT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'submit', ngoName, submissionDate, adCount, mode, postLinks, zipName, zipBase64 }),
+      body: JSON.stringify({ action: 'submit', ngoName, submissionDate, adCount, mode, postLinks, zipName, zipBase64, replacesSubmissionId }),
       signal: controller.signal,
     });
   } catch (err) {

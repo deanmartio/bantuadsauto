@@ -2,6 +2,7 @@
  * BantuAds intake + tracker (Google Apps Script web app).
  *
  * Public:  POST {action:"submit", ...}  -> saves the ZIP to Drive, logs one tracker row.
+ *          POST {action:"folder", folderId} -> lists a public Drive folder's files (preview + file count).
  * Private: POST {action:"list"|"update"|"zip", key, ...} -> used by KawanBantu's
  *          "process new BantuAds submissions" command. Needs ADMIN_KEY.
  *
@@ -20,6 +21,8 @@ var CONFIG = {
   MAX_POST_LINKS: 100,
   MAX_SUBMITS_PER_MINUTE: 20,
   MAX_SUBMITS_PER_NGO_PER_HOUR: 10,
+  MAX_FOLDER_LOOKUPS_PER_MINUTE: 60,
+  MAX_FOLDER_FILES: 50,
   DATE_TOLERANCE_DAYS: 3,
 };
 
@@ -53,6 +56,7 @@ function doPost(e) {
   try {
     switch (body.action) {
       case 'submit': return json_(handleSubmit_(body));
+      case 'folder': return json_(handleFolder_(body));
       case 'list':   return json_(withAdmin_(body, handleList_));
       case 'update': return json_(withAdmin_(body, handleUpdate_));
       case 'zip':    return json_(withAdmin_(body, handleZip_));
@@ -117,12 +121,24 @@ function handleSubmit_(body) {
     row[COL['Mode'] - 1] = v.mode;
     row[COL['Drive folder link'] - 1] = folder.getUrl();
     row[COL['Status'] - 1] = 'Received';
-    row[COL['Notes'] - 1] = '';
+    row[COL['Notes'] - 1] = v.replaces ? safeCell_('Pengganti ' + v.replaces + ' (NGO mengedit setelah kirim)') : '';
     row[COL['Submission date'] - 1] = v.submissionDate;
     row[COL['Post links'] - 1] = safeCell_(v.postLinks.join('\n'));
     row[COL['Zip file ID'] - 1] = file.getId();
     row[COL['Zip SHA-256'] - 1] = sha;
     sheet.appendRow(row);
+
+    // An NGO edited and re-sent: flag the earlier row so processing skips it.
+    if (v.replaces) {
+      var old = findRowBy_(sheet, COL['Submission ID'], v.replaces);
+      if (old && cleanText_(old.values[COL['NGO'] - 1]).toLowerCase() === v.ngoName.toLowerCase()) {
+        var stamp = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm');
+        var prev = String(old.values[COL['Notes'] - 1] || '');
+        var line = '[' + stamp + '] Diganti oleh ' + id + ' (NGO mengedit setelah kirim).';
+        sheet.getRange(old.row, COL['Notes']).setValue(safeCell_(prev ? prev + '\n' + line : line));
+        if (String(old.values[COL['Status'] - 1]) === 'Received') sheet.getRange(old.row, COL['Status']).setValue('Problem');
+      }
+    }
 
     return { ok: true, submissionId: id, receivedAt: receivedAt };
   } finally {
@@ -160,6 +176,9 @@ function validateSubmission_(body, now) {
   if (mode !== 'drive' && postLinks.length === 0) return fail('Mode postingan butuh minimal 1 link postingan.');
   if (mode === 'drive' && postLinks.length > 0) return fail('Mode Drive tidak boleh berisi link postingan.');
 
+  var replaces = body.replacesSubmissionId ? String(body.replacesSubmissionId) : '';
+  if (replaces && !/^BA-\d{8}-\d{6}-[A-F0-9]{4}$/.test(replaces)) return fail('Nomor submission yang diedit tidak valid.');
+
   var zipName = String(body.zipName || '');
   if (!/^BantuAds_[^\/\\:*?"<>|]{1,150}_\d{4}-\d{2}-\d{2}\.zip$/.test(zipName)) return fail('Nama file ZIP tidak valid.');
 
@@ -178,7 +197,38 @@ function validateSubmission_(body, now) {
     postLinks: postLinks.map(function (l) { return String(l).trim(); }),
     zipName: zipName,
     zipBase64: zipBase64,
+    replaces: replaces,
   };
+}
+
+// ── Public: list a Drive folder's files ───────────────────────────────────────
+
+function handleFolder_(body) {
+  var folderId = String(body.folderId || '');
+  if (!/^[A-Za-z0-9_-]{10,100}$/.test(folderId)) return { ok: false, error: 'Link folder tidak valid.' };
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('folder:' + folderId);
+  if (cached) return JSON.parse(cached);
+  if (!rateLimit_(cache, 'rl:folder', CONFIG.MAX_FOLDER_LOOKUPS_PER_MINUTE, 60)) {
+    return { ok: false, error: 'Server sedang sibuk. Coba lagi dalam 1 menit.' };
+  }
+  var result;
+  try {
+    var it = DriveApp.getFolderById(folderId).getFiles();
+    var files = [];
+    while (it.hasNext() && files.length < CONFIG.MAX_FOLDER_FILES) {
+      var f = it.next();
+      var type = f.getMimeType();
+      if (/^(video|image)\//.test(type)) files.push({ id: f.getId(), name: f.getName(), type: type.split('/')[0] });
+    }
+    // Same order the download script uses: natural sort by file name.
+    files.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }); });
+    result = { ok: true, files: files };
+  } catch (err) {
+    result = { ok: false, error: 'Folder tidak bisa dibuka. Pastikan folder di-share ke "Anyone with the link".' };
+  }
+  cache.put('folder:' + folderId, JSON.stringify(result), 600);
+  return result;
 }
 
 function isPostLink_(link) {

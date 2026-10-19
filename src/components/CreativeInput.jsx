@@ -1,5 +1,51 @@
 import { isFolderLink } from '../utils/driveUtils';
-import { Icon } from './ui';
+import { useEffect } from 'react';
+import { Icon, Fig } from './ui';
+import { useFolderFiles } from '../utils/folderService';
+
+// Folder links: KawanBantu's server lists the folder, so the file count fills itself in (still
+// editable). If the folder can't be read, the NGO counts the files by hand as before.
+function FolderCount({ creative, index, onUpdate }) {
+  const folder = useFolderFiles(creative.link);
+  const detected = folder.status === 'ok' ? folder.files.length : null;
+
+  useEffect(() => {
+    if (detected && !creative.countManual && creative.count !== Math.min(20, detected)) {
+      onUpdate(index, { count: Math.min(20, detected) });
+    }
+  }, [detected, creative.countManual, creative.count, index, onUpdate]);
+
+  const tone = detected ? 'bg-brand-tint' : 'bg-warn-tint';
+  return (
+    <div className={`mt-2.5 ml-7 rounded-lg px-3 py-2.5 ${tone}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className={`flex items-center gap-1.5 text-[13px] font-medium ${detected ? 'text-brand-deep' : 'text-warn'}`}>
+          <Icon name={detected ? 'check' : 'folder'} className="w-3.5 h-3.5" strokeWidth={detected ? 2.5 : 2} />
+          {folder.status === 'loading' && 'Mengecek isi folder…'}
+          {detected != null && detected > 0 && <>Terdeteksi <Fig>{detected}</Fig> file di folder ini</>}
+          {detected === 0 && 'Folder ini tidak berisi video atau gambar'}
+          {(folder.status === 'error' || folder.status === 'idle') && 'Link folder: berapa file di dalamnya?'}
+        </span>
+        <label className="flex items-center gap-2 text-[13px] text-ink-soft">
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={creative.count || 1}
+            onChange={e => onUpdate(index, { count: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)), countManual: true })}
+            className="field !w-16 !py-1 text-center font-mono tabular-nums"
+            aria-label="Jumlah file dalam folder"
+          />
+          file
+        </label>
+      </div>
+      <p className="text-xs text-ink-soft mt-1.5 leading-relaxed">
+        {folder.status === 'error' && folder.error ? `${folder.error} ` : ''}
+        Hanya file yang langsung ada di folder ini, tanpa sub-folder. Setiap file jadi 1 iklan, sesuai urutan nama di Drive.
+      </p>
+    </div>
+  );
+}
 
 export default function CreativeInput({ creative, index, total, inputId, invalid, onUpdate, onRemove }) {
   const isFolder = isFolderLink(creative.link);
@@ -53,31 +99,7 @@ export default function CreativeInput({ creative, index, total, inputId, invalid
         </div>
       </div>
 
-      {isFolder && (
-        <div className="mt-2.5 ml-7 rounded-lg bg-warn-tint px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-warn">
-              <Icon name="folder" className="w-3.5 h-3.5" />
-              Link folder: berapa file di dalamnya?
-            </span>
-            <label className="flex items-center gap-2 text-xs text-ink-soft">
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={creative.count || 1}
-                onChange={e => onUpdate(index, 'count', Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="field !w-16 !py-1 text-center font-semibold tabular-nums"
-                aria-label="Jumlah file dalam folder"
-              />
-              file
-            </label>
-          </div>
-          <p className="text-xs text-ink-soft mt-1.5 leading-relaxed">
-            Hitung file yang ada langsung di folder ini, tanpa sub-folder. Setiap file jadi 1 iklan, sesuai urutan di Drive.
-          </p>
-        </div>
-      )}
+      {isFolder && <FolderCount creative={creative} index={index} onUpdate={onUpdate} />}
     </div>
   );
 }

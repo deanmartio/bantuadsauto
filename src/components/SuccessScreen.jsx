@@ -8,7 +8,7 @@ function Stamp({ submission }) {
     <div className="stamp-in w-36 h-36 rounded-full border-[3px] border-plum p-1 -rotate-6 shrink-0" aria-label={`Diterima, nomor ${submission.submissionId}`}>
       <div className="w-full h-full rounded-full border border-plum flex flex-col items-center justify-center text-center text-plum-deep">
         <span className="text-[11px] font-bold tracking-[0.12em]">KAWANBANTU</span>
-        <span className="text-[15px] font-extrabold tracking-[0.14em] my-0.5">DITERIMA</span>
+        <span className="text-[15px] font-bold tracking-[0.14em] my-0.5">DITERIMA</span>
         <Fig className="text-xs font-medium">{tail}</Fig>
         <Fig className="text-[11px]">{submission.receivedAt.slice(0, 10)}</Fig>
       </div>
@@ -26,11 +26,14 @@ export default function SuccessScreen({ ngoName, exportedFiles, submission, onSt
           <>
             <div className="flex items-start justify-between gap-6 mb-5">
               <div>
-                <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Submission Terkirim</h1>
+                <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Submission Terkirim</h1>
                 <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
                   Tim KawanBantu sudah menerima submission <span className="font-semibold text-ink">{ngoName}</span>.
                   Tidak perlu kirim lewat WhatsApp lagi.
                 </p>
+                {submission.replaced && (
+                  <p className="text-[13px] text-plum-deep mt-2">Versi ini menggantikan <span className="font-mono">{submission.replaced}</span>.</p>
+                )}
               </div>
               <div className="hidden sm:block shrink-0 pt-1"><Stamp submission={submission} /></div>
             </div>
@@ -45,7 +48,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, submission, onSt
           </>
         ) : (
           <>
-            <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">File ZIP Sudah Diunduh</h1>
+            <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">File ZIP Sudah Diunduh</h1>
             <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
               Satu langkah lagi: kirim file ini ke tim KawanBantu lewat WhatsApp atau grup chat.
             </p>
@@ -73,10 +76,11 @@ export default function SuccessScreen({ ngoName, exportedFiles, submission, onSt
         <button type="button" onClick={onReDownload} className="btn-secondary w-full">
           <Icon name="download" /> {submitted ? 'Download Salinan ZIP' : 'Download Ulang File ZIP'}
         </button>
-        {!submitted && (
-          <button type="button" onClick={onEdit} className="btn-ghost justify-center w-full !py-2.5">
-            <Icon name="arrowLeft" /> Edit Submission
-          </button>
+        <button type="button" onClick={onEdit} className="btn-ghost justify-center w-full !py-2.5">
+          <Icon name="arrowLeft" /> Edit Submission
+        </button>
+        {submitted && (
+          <p className="text-[13px] text-ink-soft text-center -mt-1">Ada yang salah? Edit lalu kirim lagi; versi baru menggantikan yang ini.</p>
         )}
         <button type="button" onClick={onStartOver} className="btn-ghost justify-center w-full !py-2.5">
           <Icon name="plus" /> Buat Submission Baru

@@ -59,7 +59,7 @@ function Ledger({ lines, activeRowId, onJump }) {
                 type="button"
                 onClick={() => onJump(line.rowId)}
                 className={`w-full grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 items-baseline px-4 py-2 text-left transition-colors duration-150 ${
-                  active ? 'bg-brand-tint/70' : 'hover:bg-paper'
+                  active ? 'bg-plum-tint' : 'hover:bg-paper'
                 }`}
               >
                 {line.blank ? (
@@ -72,7 +72,7 @@ function Ledger({ lines, activeRowId, onJump }) {
                   </>
                 ) : (
                   <>
-                    <Fig className="text-xs text-brand-deep">{String(line.no).padStart(3, '0')}</Fig>
+                    <Fig className="text-xs text-plum-deep">{String(line.no).padStart(3, '0')}</Fig>
                     <span className="min-w-0">
                       <span className="block text-[13px] font-semibold text-ink truncate">{line.name}</span>
                       <span className="block text-[11px] text-ink-faint truncate">{line.detail}</span>
@@ -109,8 +109,44 @@ function Preview({ ngoName, row }) {
   return <div className="px-4 pt-3 pb-4"><AdPreview ngoName={ngoName} row={row} /></div>;
 }
 
-// Preview of the card being edited on top; the passbook ledger of every ad below, always visible.
-export default function SidePanel({ ngoName, adRows, activeRowId, onJump }) {
+// The send-off: counts, what is still missing (each item jumps to its field), and the one button.
+function ActionCard({ cards, ads, issues, showIssues, onContinue, onJumpIssue }) {
+  const shown = issues.slice(0, 5);
+  return (
+    <section className="leaf p-4 shrink-0" aria-label="Lanjut ke review">
+      <div className="flex items-baseline justify-between text-[13px] text-ink-soft mb-3">
+        <span><Fig className="text-ink font-medium">{cards}</Fig> iklan diisi</span>
+        <span><Fig className="text-ink font-medium">{ads}</Fig> iklan di Meta</span>
+      </div>
+      {showIssues && issues.length > 0 && (
+        <div className="rounded-xl bg-danger-tint px-3 py-2.5 mb-3" role="status">
+          <p className="text-[13px] font-semibold text-danger mb-1"><Fig>{issues.length}</Fig> hal belum lengkap</p>
+          <ul>
+            {shown.map((issue, i) => (
+              <li key={i}>
+                <button type="button" onClick={() => onJumpIssue(issue)} disabled={!issue.id}
+                  className="w-full flex items-start gap-1.5 py-1 text-left text-[13px] text-ink hover:underline disabled:no-underline disabled:cursor-default">
+                  <Icon name="arrowRight" className="w-3.5 h-3.5 mt-0.5 text-danger shrink-0" />
+                  <span>{issue.message}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {issues.length > shown.length && (
+            <p className="text-xs text-ink-soft mt-1">dan <Fig>{issues.length - shown.length}</Fig> lainnya</p>
+          )}
+        </div>
+      )}
+      <button type="button" onClick={onContinue} className="btn-primary w-full">
+        Review Sebelum Kirim <Icon name="arrowRight" />
+      </button>
+    </section>
+  );
+}
+
+// Preview of the card being edited on top, the passbook ledger of every ad below it, and the
+// send-off at the bottom. On wide screens the whole column follows the NGO down the page.
+export default function SidePanel({ ngoName, adRows, activeRowId, onJump, ads, issues, showIssues, onContinue, onJumpIssue }) {
   const index = Math.max(0, adRows.findIndex(r => r.id === activeRowId));
   const row = adRows[index];
   const lines = getLedger(adRows);
@@ -119,20 +155,21 @@ export default function SidePanel({ ngoName, adRows, activeRowId, onJump }) {
     <div className="flex flex-col gap-3 lg:h-full">
       <section className="leaf shrink-0" aria-labelledby="preview-title">
         <div className="flex items-baseline justify-between px-4 pt-3.5">
-          <h2 id="preview-title" className="text-sm font-bold text-ink">Pratinjau</h2>
+          <h2 id="preview-title" className="text-sm font-semibold text-ink">Pratinjau</h2>
           <span className="text-[13px] text-ink-soft truncate ml-3">
-            Iklan <Fig>{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
+            Iklan <Fig className="text-plum-deep">{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
           </span>
         </div>
         <Preview ngoName={ngoName} row={row} />
       </section>
       <section className="leaf flex flex-col min-h-0 lg:flex-1 overflow-hidden" aria-labelledby="ledger-title">
         <div className="flex items-baseline justify-between px-4 pt-3.5 pb-1">
-          <h2 id="ledger-title" className="text-sm font-bold text-ink">Rincian iklan</h2>
+          <h2 id="ledger-title" className="text-sm font-semibold text-ink">Rincian iklan</h2>
           <span className="text-[13px] text-ink-soft">dicetak per baris</span>
         </div>
         <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
       </section>
+      <ActionCard cards={adRows.length} ads={ads} issues={issues} showIssues={showIssues} onContinue={onContinue} onJumpIssue={onJumpIssue} />
     </div>
   );
 }

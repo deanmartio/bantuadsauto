@@ -4,8 +4,7 @@ import TopFields from './components/TopFields';
 import AdTable from './components/AdTable';
 import ReviewScreen from './components/ReviewScreen';
 import SuccessScreen from './components/SuccessScreen';
-import { getIssues, getDuplicateAdNames } from './utils/validation';
-import IssueGuide from './components/IssueGuide';
+import { getIssues } from './utils/validation';
 import SidePanel from './components/SidePanel';
 import { Icon } from './components/ui';
 import { generateExportZip, bytesToBase64, getSubmissionSummary } from './utils/zipGenerator';
@@ -64,9 +63,9 @@ function loadDraft() {
   }
 }
 
-function saveDraft(ngoName, adRows) {
+function saveDraft(ngoName, adRows, sentAs) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ngoName, adRows }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ngoName, adRows, sentAs }));
   } catch { /* quota exceeded — fail silently */ }
 }
 
@@ -79,7 +78,8 @@ export default function App() {
   const [submission, setSubmission] = useState(null); // { submissionId, receivedAt } after "Kirim ke KawanBantu"
   const lastZipRef = useRef(null); // the ZIP already downloaded, reused when re-sending after a failure
   const [showIssues, setShowIssues] = useState(false); // field-level errors appear after the first "Lanjut" attempt
-  const [guideOpen, setGuideOpen] = useState(false);
+  // Submission this draft was already sent as. Editing and re-sending replaces it in the tracker.
+  const [sentAs, setSentAs] = useState(draft?.sentAs ?? null);
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
   const [activeRowId, setActiveRowId] = useState(null); // the card being edited; the side panel follows it
 
@@ -89,8 +89,8 @@ export default function App() {
 
   // Auto-save draft on every change
   useEffect(() => {
-    saveDraft(ngoName, adRows);
-  }, [ngoName, adRows]);
+    saveDraft(ngoName, adRows, sentAs);
+  }, [ngoName, adRows, sentAs]);
 
   function handleTopChange(field, value) {
     if (field === 'ngoName') setNgoName(value);
@@ -113,7 +113,6 @@ export default function App() {
 
   const issues = getIssues(ngoName, adRows);
   const hasErrors = issues.length > 0;
-  const duplicateCount = getDuplicateAdNames(adRows).size;
 
   const currentRowId = adRows.some(r => r.id === activeRowId) ? activeRowId : adRows[0]?.id;
 
@@ -134,7 +133,6 @@ export default function App() {
 
   // Open the ad that holds the field (if collapsed), then scroll to it and focus it.
   function jumpTo(issue) {
-    setGuideOpen(false);
     if (issue.rowId != null && collapsedIds.has(issue.rowId)) toggleCollapse(issue.rowId);
     requestAnimationFrame(() => {
       const el = issue.id && document.getElementById(issue.id);
@@ -148,7 +146,6 @@ export default function App() {
     if (hasErrors) {
       setShowIssues(true);
       jumpTo(issues[0]);
-      setGuideOpen(true);
       return;
     }
     setScreen('review');
@@ -170,8 +167,6 @@ export default function App() {
 
     triggerDownload(zipBlob, zipFilename);
 
-    // Clear draft and show success screen
-    localStorage.removeItem(STORAGE_KEY);
     setExportedFiles({ zipFilename, xlsxFilename, pyFilename });
     setSubmission(null);
     setScreen('success');
@@ -179,13 +174,16 @@ export default function App() {
 
   // Always does both: downloads the ZIP (the NGO's backup copy) and sends it to KawanBantu.
   // A retry re-sends the same ZIP without downloading it again. Throws a user-readable error.
-  async function handleSubmit({ retry = false } = {}) {
+  // onStage reports progress to the review screen: 'prepare' -> 'upload' -> 'done'.
+  async function handleSubmit({ retry = false, onStage = () => {} } = {}) {
     let zip = retry ? lastZipRef.current : null;
     if (!zip) {
+      onStage('prepare');
       zip = await generateExportZip(ngoName, adRows);
       lastZipRef.current = zip;
       triggerDownload(zip.blob, zip.filename);
     }
+    onStage('upload', zip.bytes.length);
     setExportedFiles({ zipFilename: zip.filename, xlsxFilename: zip.xlsxFilename, pyFilename: zip.pyFilename });
     const result = await submitToKawanBantu({
       ngoName: ngoName.trim(),
@@ -195,16 +193,18 @@ export default function App() {
       postLinks: zip.postLinks,
       zipName: zip.filename.replace(/[/\\:*?"<>|]/g, '_'), // same characters a browser download would replace
       zipBase64: bytesToBase64(zip.bytes),
+      replacesSubmissionId: sentAs?.submissionId || undefined,
     });
-    localStorage.removeItem(STORAGE_KEY);
+    onStage('done');
     lastZipRef.current = null;
-    setSubmission({ submissionId: result.submissionId, receivedAt: result.receivedAt });
+    const sent = { submissionId: result.submissionId, receivedAt: result.receivedAt, replaced: sentAs?.submissionId || null };
+    setSubmission(sent);
+    setSentAs(sent); // the draft stays, so the NGO can still edit and re-send
     setScreen('success');
   }
 
   // Sending failed but the ZIP is already downloaded: the NGO sends it via WhatsApp instead.
   function handleContinueWithoutSend() {
-    localStorage.removeItem(STORAGE_KEY);
     lastZipRef.current = null;
     setSubmission(null);
     setScreen('success');
@@ -221,8 +221,10 @@ export default function App() {
     setAdRows([createEmptyRow()]);
     setExportedFiles(null);
     setSubmission(null);
+    setSentAs(null);
     setShowIssues(false);
     setCollapsedIds(new Set());
+    localStorage.removeItem(STORAGE_KEY);
     setScreen('form');
   }
 
@@ -232,18 +234,27 @@ export default function App() {
     <div className="min-h-screen bg-paper">
       <Header screen={screen} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-7 sm:py-9">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 pb-16">
         {screen === 'form' && (
           <>
-            <div className="mb-6 max-w-3xl">
-              <h1 className="text-[1.75rem] leading-tight font-extrabold text-ink tracking-[-0.02em]">Submission Iklan</h1>
-              <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
-                Satu iklan untuk satu cerita; setiap video, gambar atau postingan di dalamnya jadi 1 iklan di Meta.
-              </p>
-            </div>
-
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
-              <div className="flex flex-col gap-4 min-w-0">
+              <div className="flex flex-col gap-5 min-w-0">
+                <div className="max-w-3xl">
+                  <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Submission Iklan</h1>
+                  <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
+                    Satu iklan untuk satu cerita; setiap video, gambar atau postingan di dalamnya jadi 1 iklan di Meta.
+                  </p>
+                </div>
+
+                {sentAs && (
+                  <div className="flex items-start gap-3 rounded-2xl bg-plum-tint px-5 py-4" role="status">
+                    <Icon name="info" className="w-5 h-5 text-plum-deep mt-0.5 shrink-0" />
+                    <p className="text-sm text-ink leading-relaxed">
+                      Kamu sedang mengedit submission <span className="font-mono font-medium">{sentAs.submissionId}</span> yang sudah terkirim.
+                      Kalau dikirim lagi, versi baru ini yang dipakai tim KawanBantu.
+                    </p>
+                  </div>
+                )}
                 <TopFields
                   ngoName={ngoName}
                   onChange={handleTopChange}
@@ -262,41 +273,20 @@ export default function App() {
                   onAdd={handleAddRow}
                 />
               </div>
-              <aside className="lg:sticky lg:top-24 lg:h-[calc(100vh-11rem)] lg:min-h-[34rem]" aria-label="Pratinjau dan rincian iklan">
-                <SidePanel ngoName={ngoName} adRows={adRows} activeRowId={currentRowId} onJump={jumpToRow} />
+              <aside className="lg:sticky lg:top-5 lg:h-[calc(100vh-6.5rem)] lg:min-h-[36rem]" aria-label="Pratinjau, rincian iklan dan kirim">
+                <SidePanel
+                  ngoName={ngoName}
+                  adRows={adRows}
+                  activeRowId={currentRowId}
+                  onJump={jumpToRow}
+                  ads={totalAds}
+                  issues={issues}
+                  showIssues={showIssues && hasErrors}
+                  onContinue={handleContinue}
+                  onJumpIssue={jumpTo}
+                />
               </aside>
             </div>
-
-            <IssueGuide issues={issues} open={guideOpen && hasErrors} onClose={() => setGuideOpen(false)} onJump={jumpTo} />
-
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line z-40">
-              <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
-                <p className="text-sm text-ink-soft">
-                  <span className="font-semibold text-ink"><span className="font-mono tabular-nums">{adRows.length}</span> iklan<span className="hidden sm:inline"> diisi</span></span>
-                  {' · '}<span className="font-mono tabular-nums">{totalAds}</span><span className="hidden sm:inline"> iklan</span> di Meta
-                  {duplicateCount > 0 && <span className="text-danger font-semibold"> · ada nama iklan dobel</span>}
-                </p>
-                <div className="flex items-center gap-2">
-                  {hasErrors && showIssues && (
-                    <button
-                      type="button"
-                      data-issue-toggle
-                      onClick={() => setGuideOpen(o => !o)}
-                      aria-expanded={guideOpen}
-                      className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold text-danger bg-danger-tint hover:brightness-95 transition"
-                    >
-                      <Icon name="alert" className="w-4 h-4" />
-                      <span className="font-mono tabular-nums">{issues.length}</span> belum lengkap
-                    </button>
-                  )}
-                  <button type="button" onClick={handleContinue} className="btn-primary">
-                    <span className="sm:hidden">Review</span><span className="hidden sm:inline">Review Sebelum Kirim</span> <Icon name="arrowRight" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-24" />
           </>
         )}
 
@@ -317,7 +307,7 @@ export default function App() {
             exportedFiles={exportedFiles}
             submission={submission}
             onStartOver={handleStartOver}
-            onEdit={() => setScreen('form')}
+            onEdit={() => { setShowIssues(false); setScreen('form'); }}
             onReDownload={handleReDownload}
           />
         )}

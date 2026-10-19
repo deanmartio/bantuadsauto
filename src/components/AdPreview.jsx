@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Icon } from './ui';
 import { getExpandedCreatives } from '../utils/driveUtils';
+import { useFolderFiles } from '../utils/folderService';
 
 // How much Meta shows before "...lihat selengkapnya" in feed, and before it cuts a headline.
 export const PRIMARY_VISIBLE = 125;
@@ -21,7 +22,11 @@ function domainOf(url) {
 
 function Media({ creative, index, total }) {
   const [failed, setFailed] = useState(false);
-  const id = creative && !creative.isFolder ? driveFileId(creative.link) : null;
+  // A folder link has no file id of its own; look the folder up and take the Nth file.
+  const folder = useFolderFiles(creative?.isFolder ? creative.link : '');
+  const id = !creative ? null
+    : creative.isFolder ? folder.files[creative.folderFileIndex]?.id || null
+    : driveFileId(creative.link);
   const isVideo = !creative || creative.type === 'Video';
   return (
     <div className="relative aspect-video bg-paper-deep overflow-hidden">
@@ -38,7 +43,10 @@ function Media({ creative, index, total }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink-faint px-6 text-center">
           <Icon name={creative?.isFolder ? 'folder' : isVideo ? 'video' : 'image'} className="w-8 h-8" strokeWidth={1.5} />
           <span className="text-xs">
-            {!creative ? 'Video atau gambar dari Google Drive' : creative.isFolder ? `File ke-${creative.folderFileIndex + 1} dari folder Drive` : 'Pratinjau belum tersedia'}
+            {!creative ? 'Video atau gambar dari Google Drive'
+              : creative.isFolder && folder.status === 'loading' ? 'Membuka folder Drive…'
+              : creative.isFolder ? `File ke-${creative.folderFileIndex + 1} dari folder Drive`
+              : 'Pratinjau belum tersedia. Cek link dan akses "Anyone with the link".'}
           </span>
         </div>
       )}
@@ -86,7 +94,7 @@ export default function AdPreview({ ngoName, row }) {
           {text ? shown : <span className="text-ink-faint">Primary text akan muncul di sini.</span>}
           {truncated && <span className="text-ink-faint">… lihat selengkapnya</span>}
         </p>
-        <Media creative={creatives[idx]} index={idx} total={creatives.length} />
+        <Media key={`${idx}-${creatives[idx]?.link || ''}`} creative={creatives[idx]} index={idx} total={creatives.length} />
         <div className="flex items-center gap-3 px-3 py-2.5 bg-paper">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] uppercase text-ink-faint truncate">{domain || 'link campaign'}</p>
