@@ -1,12 +1,33 @@
 import { useState } from 'react';
 import { validate, getDuplicateAdNames } from '../utils/validation';
 import { getZipFilename } from '../utils/zipGenerator';
+import { isSubmitEnabled } from '../utils/submitService';
 
-export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
+export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubmit }) {
   const { errors, hasDuplicates } = validate(ngoName, adRows);
   const hasErrors = errors.length > 0;
   const duplicateNames = getDuplicateAdNames(adRows);
   const [showModal, setShowModal] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const canSubmit = isSubmitEnabled();
+
+  async function handleSend() {
+    setSending(true);
+    setSendError('');
+    try {
+      await onSubmit();
+    } catch (err) {
+      setSendError(err.message || 'Gagal mengirim.');
+      setSending(false);
+    }
+  }
+
+  function closeModal() {
+    if (sending) return;
+    setShowModal(false);
+    setSendError('');
+  }
 
   const zipFilename = getZipFilename(ngoName);
 
@@ -41,6 +62,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
         {adRows.map((row, i) => {
           const isDuplicate = duplicateNames.has(row.adName.trim().toLowerCase());
           const filledCreatives = row.creatives.filter(c => c.link.trim());
+          const isPost = row.source === 'post';
 
           return (
             <div
@@ -56,7 +78,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
                   {isDuplicate && <p className="text-xs text-red-500 font-semibold mt-0.5">Nama duplikat</p>}
                 </div>
                 <span className="text-xs bg-[#F7F2EA] px-2 py-1 rounded-full text-[#2B2033] font-semibold shrink-0">
-                  {filledCreatives.length} creative
+                  {isPost ? 'Postingan yang sudah ada' : `${filledCreatives.length} creative`}
                 </span>
               </div>
 
@@ -69,6 +91,15 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
                 }
               </div>
 
+              {isPost ? (
+                <div className="text-xs border-t border-gray-100 pt-3">
+                  <p className="font-semibold text-gray-500 mb-1">Link Postingan</p>
+                  {row.postLink?.trim()
+                    ? <p className="text-[#2A9E99] font-semibold break-all">{row.postLink}</p>
+                    : <p className="text-red-400">Belum diisi</p>
+                  }
+                </div>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs border-t border-gray-100 pt-3">
                 <div>
                   <p className="font-semibold text-gray-500 mb-1">Creatives ({filledCreatives.length})</p>
@@ -96,6 +127,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
                   }
                 </div>
               </div>
+              )}
             </div>
           );
         })}
@@ -132,9 +164,13 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
               </svg>
             </div>
 
-            <h2 className="text-lg font-bold text-[#2B2033] text-center mb-1">1 File ZIP Akan Diunduh</h2>
+            <h2 className="text-lg font-bold text-[#2B2033] text-center mb-1">
+              {canSubmit ? 'Kirim Submission ke KawanBantu' : '1 File ZIP Akan Diunduh'}
+            </h2>
             <p className="text-xs text-gray-500 text-center mb-4">
-              File ZIP ini harus dikirim ke tim KawanBantu via WhatsApp.
+              {canSubmit
+                ? 'File ZIP akan langsung terkirim ke tim KawanBantu. Tidak perlu kirim lewat WhatsApp lagi.'
+                : 'File ZIP ini harus dikirim ke tim KawanBantu via WhatsApp.'}
             </p>
 
             <div className="bg-[#F7F2EA] rounded-xl p-3 mb-4 space-y-2">
@@ -142,9 +178,44 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
                 <span className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0 text-purple-700 text-xs font-bold">ZIP</span>
                 <span className="text-xs font-semibold text-[#2B2033] break-all">{zipFilename}</span>
               </div>
-              <p className="text-[11px] text-gray-400 pl-9">Berisi file .xlsx dan .py — tim KawanBantu tinggal extract.</p>
+              <p className="text-[11px] text-gray-400 pl-9">Berisi semua data iklan untuk tim KawanBantu.</p>
             </div>
 
+            {sendError && (
+              <div className="bg-red-50 border border-red-300 text-red-700 rounded-xl px-3 py-2 text-xs font-semibold mb-4">
+                {sendError}
+              </div>
+            )}
+
+            {canSubmit ? (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={sending}
+                  className="w-full text-white font-bold rounded-xl py-2.5 text-sm disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
+                >
+                  {sending ? 'Mengirim… jangan tutup halaman ini' : 'Kirim ke KawanBantu'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowModal(false); onExport(); }}
+                  disabled={sending}
+                  className="w-full border-2 border-[#2A9E99] text-[#2A9E99] font-semibold rounded-xl py-2.5 text-sm hover:bg-teal-50 disabled:opacity-40"
+                >
+                  Download ZIP saja (cadangan)
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={sending}
+                  className="w-full text-gray-500 font-semibold rounded-xl py-2 text-sm hover:bg-gray-50 disabled:opacity-40"
+                >
+                  Batal
+                </button>
+              </div>
+            ) : (
             <div className="flex gap-2">
               <button
                 type="button"
@@ -162,6 +233,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
                 Download Sekarang
               </button>
             </div>
+            )}
           </div>
         </div>
       )}

@@ -5,7 +5,8 @@ import AdTable from './components/AdTable';
 import ReviewScreen from './components/ReviewScreen';
 import SuccessScreen from './components/SuccessScreen';
 import { validate } from './utils/validation';
-import { generateExportZip } from './utils/zipGenerator';
+import { generateExportZip, bytesToBase64 } from './utils/zipGenerator';
+import { submitToKawanBantu } from './utils/submitService';
 
 const STORAGE_KEY = 'bantuads_form_draft';
 let nextId = 1;
@@ -15,6 +16,8 @@ function createEmptyRow() {
     id: nextId++,
     adName: '',
     campaignLink: '',
+    source: 'drive', // 'drive' = Drive videos/images, 'post' = existing IG/FB post
+    postLink: '',
     creatives: [{ link: '', type: 'Video', count: 1 }],
     primaryText: '',
     headline: '',
@@ -25,6 +28,7 @@ function createEmptyRow() {
 // (Meta's bulk XLSX format never actually supported testing multiple variants —
 // see xlsxGenerator.js) so old saved rows don't crash on the new single-string shape.
 function migrateRow(row) {
+  if (!row.source) row = { ...row, source: 'drive', postLink: '' };
   if (row.primaryTexts || row.headlines) {
     const { primaryTexts, headlines, ...rest } = row;
     return {
@@ -65,6 +69,7 @@ export default function App() {
   const [ngoName, setNgoName] = useState(draft?.ngoName ?? '');
   const [adRows, setAdRows] = useState(draft?.adRows ?? [createEmptyRow()]);
   const [exportedFiles, setExportedFiles] = useState(null); // { zipFilename, xlsxFilename, pyFilename }
+  const [submission, setSubmission] = useState(null); // { submissionId, receivedAt } after "Kirim ke KawanBantu"
 
   // Auto-save draft on every change
   useEffect(() => {
@@ -109,6 +114,25 @@ export default function App() {
     // Clear draft and show success screen
     localStorage.removeItem(STORAGE_KEY);
     setExportedFiles({ zipFilename, xlsxFilename, pyFilename });
+    setSubmission(null);
+    setScreen('success');
+  }
+
+  // Sends the ZIP straight to KawanBantu. Throws a user-readable error for ReviewScreen to show.
+  async function handleSubmit() {
+    const zip = await generateExportZip(ngoName, adRows);
+    const result = await submitToKawanBantu({
+      ngoName: ngoName.trim(),
+      submissionDate: zip.submissionDate,
+      adCount: zip.adCount,
+      mode: zip.mode,
+      postLinks: zip.postLinks,
+      zipName: zip.filename.replace(/[/\\:*?"<>|]/g, '_'), // same characters a browser download would replace
+      zipBase64: bytesToBase64(zip.bytes),
+    });
+    localStorage.removeItem(STORAGE_KEY);
+    setExportedFiles({ zipFilename: zip.filename, xlsxFilename: zip.xlsxFilename, pyFilename: zip.pyFilename });
+    setSubmission({ submissionId: result.submissionId, receivedAt: result.receivedAt });
     setScreen('success');
   }
 
@@ -122,6 +146,7 @@ export default function App() {
     setNgoName('');
     setAdRows([createEmptyRow()]);
     setExportedFiles(null);
+    setSubmission(null);
     setScreen('form');
   }
 
@@ -175,6 +200,7 @@ export default function App() {
             adRows={adRows}
             onBack={() => setScreen('form')}
             onExport={handleExport}
+            onSubmit={handleSubmit}
           />
         )}
 
@@ -182,6 +208,7 @@ export default function App() {
           <SuccessScreen
             ngoName={ngoName}
             exportedFiles={exportedFiles}
+            submission={submission}
             onStartOver={handleStartOver}
             onEdit={() => setScreen('form')}
             onReDownload={handleReDownload}

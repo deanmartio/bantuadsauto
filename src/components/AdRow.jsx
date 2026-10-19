@@ -22,6 +22,8 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
     updateField('creatives', row.creatives.filter((_, i) => i !== ci));
   }
 
+  const isPost = row.source === 'post';
+
   return (
     <div className={`bg-white rounded-2xl shadow-sm border mb-4 overflow-hidden ${isDuplicate ? 'border-red-400' : 'border-gray-100'}`}>
       {/* Row header */}
@@ -35,6 +37,28 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
         >
           Hapus Iklan
         </button>
+      </div>
+
+      {/* Creative source: Drive files (default) or an existing IG/FB post */}
+      <div className="px-4 pt-4">
+        <p className="text-sm font-semibold text-[#2B2033] mb-2">Sumber Iklan</p>
+        <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden text-xs font-semibold">
+          {[
+            { value: 'drive', label: 'Video/Gambar dari Google Drive' },
+            { value: 'post', label: 'Postingan IG/FB yang sudah ada' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updateField('source', opt.value)}
+              className={`px-3 py-2 transition-colors ${
+                (row.source || 'drive') === opt.value ? 'bg-[#2A9E99] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -71,6 +95,27 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
           </div>
         </div>
 
+        {isPost && (
+          <div className="lg:col-span-10">
+            <label className="block text-sm font-semibold text-[#2B2033] mb-1">
+              Link Postingan Instagram/Facebook <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              value={row.postLink || ''}
+              onChange={e => updateField('postLink', e.target.value)}
+              placeholder="https://www.instagram.com/reel/..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2A9E99] focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+              Iklan akan memakai video dan caption dari postingan ini. Pastikan: (1) @kawanbantu sudah jadi kolaborator
+              di postingan ini, dan (2) permintaan Partnership Ads dari @kawanbantu sudah kamu terima. Tanpa dua hal ini,
+              iklan tidak bisa jalan.
+            </p>
+          </div>
+        )}
+
+        {!isPost && (<>
         {/* Creatives */}
         <div className="lg:col-span-4">
           <div className="flex items-center justify-between mb-1">
@@ -140,6 +185,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, onUpdate, on
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#2A9E99] focus:border-transparent"
           />
         </div>
+        </>)}
       </div>
     </div>
   );

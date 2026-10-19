@@ -1,4 +1,5 @@
-export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onEdit, onReDownload }) {
+export default function SuccessScreen({ ngoName, exportedFiles, submission, onStartOver, onEdit, onReDownload }) {
+  const submitted = Boolean(submission);
 
   return (
     <div className="max-w-xl mx-auto pt-10 pb-24 flex flex-col items-center text-center">
@@ -12,12 +13,30 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
         </svg>
       </div>
 
-      <h1 className="text-2xl font-bold text-[#2B2033] mb-2">File Berhasil Diunduh!</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        File submission (ZIP) sudah tersimpan di folder <span className="font-semibold text-[#2B2033]">Downloads</span> kamu.
-      </p>
+      {submitted ? (
+        <>
+          <h1 className="text-2xl font-bold text-[#2B2033] mb-2">Submission Terkirim!</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Tim KawanBantu sudah menerima submission <span className="font-semibold text-[#2B2033]">{ngoName}</span>.
+            Kamu tidak perlu mengirim file lewat WhatsApp lagi.
+          </p>
+          <div className="w-full bg-white rounded-2xl border-2 border-[#2A9E99] shadow-sm p-5 mb-6 text-left">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Nomor Submission</p>
+            <p className="text-xl font-bold text-[#2A9E99] break-all select-all">{submission.submissionId}</p>
+            <p className="text-xs text-gray-400 mt-1">Diterima {submission.receivedAt} WIB. Simpan nomor ini kalau ingin menanyakan status iklan ke tim KawanBantu.</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold text-[#2B2033] mb-2">File Berhasil Diunduh!</h1>
+          <p className="text-sm text-gray-500 mb-8">
+            File submission (ZIP) sudah tersimpan di folder <span className="font-semibold text-[#2B2033]">Downloads</span> kamu.
+          </p>
+        </>
+      )}
 
       {/* File downloaded */}
+      {!submitted && (
       <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6 text-left">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">File yang diunduh</p>
         <div className="flex items-start gap-3 mb-3">
@@ -32,19 +51,33 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
           </div>
         </div>
         <div className="pl-11 space-y-1">
-          <p className="text-xs text-gray-400 break-all">↳ {exportedFiles?.xlsxFilename}</p>
-          <p className="text-xs text-gray-400 break-all">↳ {exportedFiles?.pyFilename}</p>
+          {exportedFiles?.xlsxFilename && <p className="text-xs text-gray-400 break-all">↳ {exportedFiles?.xlsxFilename}</p>}
+          {exportedFiles?.pyFilename && <p className="text-xs text-gray-400 break-all">↳ {exportedFiles?.pyFilename}</p>}
         </div>
       </div>
+      )}
 
       {/* Primary CTA — send the file */}
+      {!submitted && (
       <div className="w-full bg-[#2A9E99] rounded-2xl p-5 mb-4 text-left">
         <p className="text-xs font-bold text-white/70 uppercase tracking-wide mb-1">Langkah Pertama</p>
         <p className="text-white font-bold text-base mb-1">Kirim file ZIP ini ke tim KawanBantu</p>
         <p className="text-white/80 text-xs">via WhatsApp atau grup chat. Cukup kirim 1 file ZIP saja.</p>
       </div>
+      )}
+
+      {submitted && (
+        <div className="w-full bg-[#FFFBF2] border border-yellow-200 rounded-2xl p-5 mb-8 text-left">
+          <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">Selanjutnya</p>
+          <p className="text-sm text-[#2B2033]">
+            Tim KawanBantu akan menyiapkan iklanmu. Pastikan permintaan Partnership Ads dari @kawanbantu sudah
+            kamu terima di Instagram, supaya iklan bisa jalan dengan identitas NGO-mu.
+          </p>
+        </div>
+      )}
 
       {/* Next step card */}
+      {!submitted && (
       <div className="w-full bg-[#FFFBF2] border border-yellow-200 rounded-2xl p-5 mb-8 text-left">
         <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3">Selanjutnya (dikerjakan tim KawanBantu)</p>
         <ol className="space-y-3">
@@ -64,6 +97,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
           ))}
         </ol>
       </div>
+      )}
 
       {/* CTA buttons */}
       <div className="w-full flex flex-col gap-3">
@@ -76,7 +110,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, onStartOver, onE
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Download Ulang File ZIP
+          {submitted ? 'Download Salinan File ZIP' : 'Download Ulang File ZIP'}
         </button>
         <button
           type="button"

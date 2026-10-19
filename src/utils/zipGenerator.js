@@ -1,23 +1,79 @@
 import JSZip from 'jszip';
 import { generateXLSX } from './xlsxGenerator';
 import { generatePythonScript } from './pythonScriptGenerator';
-import { getLocalDateString } from './driveUtils';
+import { getLocalDateString, getExpandedCreatives, isPostRow } from './driveUtils';
 
 export function getZipFilename(ngoName) {
   const date = getLocalDateString();
   return `BantuAds_${ngoName}_${date}.zip`;
 }
 
-// Bundles the XLSX + Python script into a single ZIP so the NGO only has to download and send one file.
+// What KawanBantu's intake and processing need to know about this submission.
+export function getSubmissionSummary(adRows) {
+  const driveRows = adRows.filter(r => !isPostRow(r));
+  const postRows = adRows.filter(isPostRow);
+  const driveAdCount = driveRows.reduce((n, r) => n + getExpandedCreatives(r).length, 0);
+  const mode = postRows.length === 0 ? 'drive' : driveRows.length === 0 ? 'existing_post' : 'mixed';
+  return {
+    driveRows,
+    postRows,
+    mode,
+    adCount: driveAdCount + postRows.length,
+    postLinks: postRows.map(r => r.postLink.trim()),
+  };
+}
+
+// Bundles the XLSX + Python script (Drive ads) and a submission.json manifest into one ZIP
+// so the NGO only has to download or send one file. Existing-post ads live only in the manifest.
 export async function generateExportZip(ngoName, adRows) {
-  const { blob: xlsxBlob, filename: xlsxFilename } = generateXLSX(ngoName, adRows);
-  const pyContent = generatePythonScript(ngoName, adRows);
-  const pyFilename = `download_creatives_${ngoName}_${getLocalDateString()}.py`;
-
+  const date = getLocalDateString();
+  const summary = getSubmissionSummary(adRows);
   const zip = new JSZip();
-  zip.file(xlsxFilename, await xlsxBlob.arrayBuffer());
-  zip.file(pyFilename, pyContent);
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-  return { blob: zipBlob, filename: getZipFilename(ngoName), xlsxFilename, pyFilename };
+  let xlsxFilename = null;
+  let pyFilename = null;
+  if (summary.driveRows.length > 0) {
+    const { blob: xlsxBlob, filename } = generateXLSX(ngoName, summary.driveRows);
+    xlsxFilename = filename;
+    pyFilename = `download_creatives_${ngoName}_${date}.py`;
+    zip.file(xlsxFilename, await xlsxBlob.arrayBuffer());
+    zip.file(pyFilename, generatePythonScript(ngoName, summary.driveRows));
+  }
+
+  zip.file('submission.json', JSON.stringify({
+    version: 1,
+    ngoName,
+    submissionDate: date,
+    mode: summary.mode,
+    adCount: summary.adCount,
+    existingPosts: summary.postRows.map(r => ({
+      adName: r.adName.trim(),
+      postLink: r.postLink.trim(),
+      campaignLink: r.campaignLink.trim(),
+    })),
+  }, null, 2));
+
+  const bytes = await zip.generateAsync({ type: 'uint8array' });
+  const blob = new Blob([bytes], { type: 'application/zip' });
+
+  return {
+    blob,
+    bytes,
+    filename: getZipFilename(ngoName),
+    xlsxFilename,
+    pyFilename,
+    submissionDate: date,
+    mode: summary.mode,
+    adCount: summary.adCount,
+    postLinks: summary.postLinks,
+  };
+}
+
+export function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
