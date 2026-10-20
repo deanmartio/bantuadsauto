@@ -22,6 +22,8 @@ export function buildAdName(adName, creativeIndex, totalCreatives) {
 // Expands a row's creatives, accounting for folder links with multiple files.
 // Returns a flat list where each entry has { link, type, isFolder, filename, adName }.
 export function getExpandedCreatives(row) {
+  // Ads built from an existing IG/FB post have no Drive creatives (see isPostRow).
+  if (isPostRow(row)) return [];
   const flat = [];
   row.creatives.filter(c => c.link.trim()).forEach(c => {
     const isFolder = isFolderLink(c.link);
@@ -37,6 +39,22 @@ export function getExpandedCreatives(row) {
     filename: buildCreativeFilename(row.adName, idx, total, c.type),
     adName: buildAdName(row.adName, idx, total),
   }));
+}
+
+// A row whose creative is an existing Instagram/Facebook post instead of Drive files.
+export function isPostRow(row) {
+  return row.source === 'post';
+}
+
+// One ad per post link, named like Drive creatives ("Abah Kani 1", "Abah Kani 2"...).
+export function getExpandedPosts(row) {
+  if (!isPostRow(row)) return [];
+  const links = (row.postLinks || []).map(l => l.trim()).filter(Boolean);
+  return links.map((postLink, idx) => ({ postLink, adName: buildAdName(row.adName.trim(), idx, links.length) }));
+}
+
+export function isPostLink(link) {
+  return /^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.com|fb\.watch)\/\S+$/i.test(link.trim());
 }
 
 export function getLocalDateString() {

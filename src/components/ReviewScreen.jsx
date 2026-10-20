@@ -1,170 +1,163 @@
 import { useState } from 'react';
-import { validate, getDuplicateAdNames } from '../utils/validation';
-import { getZipFilename } from '../utils/zipGenerator';
+import { getDuplicateAdNames } from '../utils/validation';
+import { getSubmissionSummary } from '../utils/zipGenerator';
+import { getExpandedCreatives, getExpandedPosts, getLocalDateString } from '../utils/driveUtils';
+import { isSubmitEnabled } from '../utils/submitService';
+import { Icon, Fig } from './ui';
+import SendProgress from './SendProgress';
 
-export default function ReviewScreen({ ngoName, adRows, onBack, onExport }) {
-  const { errors, hasDuplicates } = validate(ngoName, adRows);
-  const hasErrors = errors.length > 0;
+const MODE_LABEL = { drive: 'File dari Google Drive', existing_post: 'Postingan yang sudah ada', mixed: 'Drive dan postingan' };
+
+export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubmit, onContinueWithoutSend }) {
   const duplicateNames = getDuplicateAdNames(adRows);
-  const [showModal, setShowModal] = useState(false);
+  const summary = getSubmissionSummary(adRows);
+  const canSubmit = isSubmitEnabled();
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [downloaded, setDownloaded] = useState(false); // ZIP already saved; a retry only re-sends
+  const [stage, setStage] = useState(null);
+  const [bytes, setBytes] = useState(0);
 
-  const zipFilename = getZipFilename(ngoName);
+  async function handleSend() {
+    setSending(true);
+    setSendError('');
+    try {
+      await onSubmit({ retry: downloaded, onStage: (st, size) => { setStage(st); if (size) setBytes(size); } });
+    } catch (err) {
+      setDownloaded(true);
+      setSendError(err.message || 'Gagal mengirim.');
+      setSending(false);
+      setStage(null);
+    }
+  }
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
+    <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#2B2033] mb-1">Review Sebelum Export</h1>
-        <p className="text-sm text-gray-500">Pastikan semua data sudah benar sebelum mengirim ke tim KawanBantu.</p>
+        <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Review Sebelum Kirim</h1>
+        <p className="text-[15px] text-ink-soft mt-2">Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.</p>
       </div>
 
-      {/* NGO info */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-        <h2 className="text-sm font-bold text-[#2B2033] uppercase tracking-wide mb-2 opacity-60">Informasi NGO</h2>
-        <p className="text-xs text-gray-400 mb-0.5">Nama NGO</p>
-        <p className="text-sm font-semibold text-[#2B2033]">{ngoName || <span className="text-red-400">—belum diisi—</span>}</p>
-      </div>
+      <section className="leaf p-5 mb-4">
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
+          {[
+            ['NGO', ngoName],
+            ['Iklan di Meta', String(summary.adCount)],
+            ['Sumber', MODE_LABEL[summary.mode]],
+            ['Tanggal', getLocalDateString()],
+          ].map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-xs text-ink-soft">{k}</dt>
+              <dd className={`text-[15px] font-semibold text-ink mt-0.5 break-words ${k === 'Iklan di Meta' || k === 'Tanggal' ? 'font-mono font-medium tabular-nums' : ''}`}>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
-      {/* Error banners */}
-      {hasDuplicates && (
-        <div className="bg-red-50 border border-red-300 text-red-700 rounded-xl px-4 py-3 text-sm font-semibold mb-3">
-          Ada nama iklan yang duplikat. Kembali dan perbaiki sebelum export.
+      {duplicateNames.size > 0 && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-warn-tint px-4 py-3 text-sm text-ink mb-4" role="status">
+          <Icon name="alert" className="w-4 h-4 mt-0.5 text-warn shrink-0" />
+          Ada nama iklan yang sama di lebih dari satu iklan. Sebaiknya kembali dan bedakan namanya.
         </div>
       )}
-      {errors.some(e => e.includes('wajib diisi') || e.includes('kosong') || e.includes('Minimal')) && (
-        <div className="bg-red-50 border border-red-300 text-red-700 rounded-xl px-4 py-3 text-sm font-semibold mb-3">
-          Ada field yang masih kosong.
-        </div>
-      )}
 
-      {/* Ad cards */}
-      <div className="space-y-4 mb-6">
+      <div className="flex flex-col gap-3">
         {adRows.map((row, i) => {
-          const isDuplicate = duplicateNames.has(row.adName.trim().toLowerCase());
-          const filledCreatives = row.creatives.filter(c => c.link.trim());
-
+          const isPost = row.source === 'post';
+          const ads = isPost ? getExpandedPosts(row) : getExpandedCreatives(row);
+          // Same running numbers as the ledger beside the form.
+          const offset = adRows.slice(0, i).reduce((n, r) => n + (r.source === 'post' ? getExpandedPosts(r) : getExpandedCreatives(r)).length, 0);
           return (
-            <div
-              key={row.id}
-              className={`bg-white rounded-2xl border shadow-sm p-5 ${isDuplicate ? 'border-red-300' : 'border-gray-100'}`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Iklan #{i + 1}</p>
-                  <p className={`font-bold text-[#2B2033] ${!row.adName.trim() ? 'text-red-400' : ''}`}>
-                    {row.adName.trim() || '—belum diisi—'}
-                  </p>
-                  {isDuplicate && <p className="text-xs text-red-500 font-semibold mt-0.5">Nama duplikat</p>}
+            <section key={row.id} className="leaf p-5">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold text-ink break-words">{row.adName.trim()}</h2>
+                  <a href={row.campaignLink.trim()} target="_blank" rel="noreferrer"
+                    className="text-xs font-medium text-brand-deep hover:underline break-all">
+                    {row.campaignLink.trim()}
+                  </a>
                 </div>
-                <span className="text-xs bg-[#F7F2EA] px-2 py-1 rounded-full text-[#2B2033] font-semibold shrink-0">
-                  {filledCreatives.length} creative
+                <span className="text-xs font-semibold text-ink-soft bg-paper rounded-full px-2.5 py-1 shrink-0 tabular-nums">
+                  Iklan <Fig>{String(i + 1).padStart(2, '0')}</Fig> · <Fig>{ads.length}</Fig> iklan di Meta
                 </span>
               </div>
 
-              {/* Campaign link per ad */}
-              <div className="mb-3">
-                <p className="text-xs text-gray-400 mb-0.5">Link Halaman Campaign</p>
-                {row.campaignLink.trim()
-                  ? <p className="text-xs font-semibold text-[#2A9E99] break-all">{row.campaignLink}</p>
-                  : <p className="text-xs text-red-400 font-semibold">—belum diisi—</p>
-                }
-              </div>
+              {!isPost && (
+                <div className="grid sm:grid-cols-2 gap-4 text-sm border-t border-line pt-3 mb-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-ink-soft mb-1">Headline</p>
+                    <p className="text-ink font-semibold break-words">{row.headline.trim()}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-ink-soft mb-1">Primary text</p>
+                    <p className="text-ink line-clamp-3 whitespace-pre-line break-words">{row.primaryText.trim()}</p>
+                  </div>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs border-t border-gray-100 pt-3">
-                <div>
-                  <p className="font-semibold text-gray-500 mb-1">Creatives ({filledCreatives.length})</p>
-                  {filledCreatives.length === 0
-                    ? <p className="text-red-400">Belum ada link</p>
-                    : filledCreatives.map((c, ci) => (
-                        <p key={ci} className="text-gray-600 truncate">
-                          [{c.type}] {c.link.slice(0, 40)}…
-                        </p>
-                      ))
-                  }
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-500 mb-1">Primary Text</p>
-                  {row.primaryText.trim()
-                    ? <p className="text-gray-600 line-clamp-1">{row.primaryText.slice(0, 60)}{row.primaryText.length > 60 ? '…' : ''}</p>
-                    : <p className="text-red-400">Belum diisi</p>
-                  }
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-500 mb-1">Headline</p>
-                  {row.headline.trim()
-                    ? <p className="text-gray-600 line-clamp-1">{row.headline.slice(0, 60)}{row.headline.length > 60 ? '…' : ''}</p>
-                    : <p className="text-red-400">Belum diisi</p>
-                  }
-                </div>
+              <div className="border-t border-line pt-3">
+                <p className="text-xs font-semibold text-ink-soft mb-1">Iklan di Meta yang akan dibuat</p>
+                <ol className="flex flex-col">
+                  {ads.map((ad, ai) => (
+                    <li key={ai} className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem] gap-x-2 items-baseline py-1.5 border-b border-line last:border-b-0 text-sm">
+                      <Fig className="text-xs text-plum-deep">{String(offset + ai + 1).padStart(3, '0')}</Fig>
+                      <span className="min-w-0">
+                        <span className="font-semibold text-ink">{ad.adName}</span>
+                        <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>
+                      </span>
+                      <span className="text-[11px] font-semibold tracking-[0.06em] text-ink-soft text-right">{isPost ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </div>
+            </section>
           );
         })}
       </div>
 
-      {/* Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 justify-end max-w-full z-40">
-        <button
-          type="button"
-          onClick={onBack}
-          className="border-2 border-[#2A9E99] text-[#2A9E99] font-semibold rounded-xl px-5 py-2.5 text-sm hover:bg-teal-50 transition-colors"
-        >
-          ← Kembali Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => !hasErrors && setShowModal(true)}
-          disabled={hasErrors}
-          className="text-white font-bold rounded-xl px-6 py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          style={{ background: hasErrors ? '#9ca3af' : 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
-        >
-          Export Sekarang
-        </button>
-      </div>
-
-      {/* Pre-download modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto"
-              style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}>
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </div>
-
-            <h2 className="text-lg font-bold text-[#2B2033] text-center mb-1">1 File ZIP Akan Diunduh</h2>
-            <p className="text-xs text-gray-500 text-center mb-4">
-              File ZIP ini harus dikirim ke tim KawanBantu via WhatsApp.
-            </p>
-
-            <div className="bg-[#F7F2EA] rounded-xl p-3 mb-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0 text-purple-700 text-xs font-bold">ZIP</span>
-                <span className="text-xs font-semibold text-[#2B2033] break-all">{zipFilename}</span>
+      <div className="mt-6">
+        {sending && stage ? (
+          <SendProgress stage={stage} bytes={bytes} />
+        ) : (
+          <section className="leaf p-5 sm:p-6">
+            {sendError && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-danger-tint px-4 py-3 mb-4" role="alert">
+                <Icon name="alert" className="w-4 h-4 mt-0.5 text-danger shrink-0" />
+                <div className="text-sm">
+                  <p className="font-semibold text-ink">{sendError}</p>
+                  <p className="text-ink-soft mt-0.5">
+                    File ZIP sudah tersimpan di folder Downloads. Coba kirim lagi, atau kirim file itu ke tim KawanBantu via WhatsApp.
+                  </p>
+                </div>
               </div>
-              <p className="text-[11px] text-gray-400 pl-9">Berisi file .xlsx dan .py — tim KawanBantu tinggal extract.</p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="flex-1 border-2 border-gray-200 text-gray-500 font-semibold rounded-xl py-2.5 text-sm hover:bg-gray-50"
-              >
-                Batal
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button type="button" onClick={onBack} className="btn-secondary">
+                <Icon name="arrowLeft" /> Kembali Edit
               </button>
-              <button
-                type="button"
-                onClick={() => { setShowModal(false); onExport(); }}
-                className="flex-1 text-white font-bold rounded-xl py-2.5 text-sm"
-                style={{ background: 'linear-gradient(135deg, #2A9E99, #8A59B3)' }}
-              >
-                Download Sekarang
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {sendError && (
+                  <button type="button" onClick={onContinueWithoutSend} className="btn-ghost">
+                    Saya kirim via WhatsApp saja
+                  </button>
+                )}
+                {canSubmit ? (
+                  <button type="button" onClick={handleSend} className="btn-primary">
+                    <Icon name="send" /> {sendError ? 'Coba Kirim Lagi' : 'Kirim ke KawanBantu'}
+                  </button>
+                ) : (
+                  <button type="button" onClick={onExport} className="btn-primary">
+                    <Icon name="download" /> Download ZIP
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+            {canSubmit && !sendError && (
+              <p className="text-[13px] text-ink-soft mt-3 sm:text-right">Salinan file ZIP otomatis tersimpan di folder Downloads.</p>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
