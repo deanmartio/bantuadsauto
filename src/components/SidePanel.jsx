@@ -45,12 +45,12 @@ function Ledger({ lines, activeRowId, onJump }) {
   }, [signature, activeRowId]);
 
   return (
-    <div className="flex flex-col lg:flex-1 lg:min-h-0">
+    <div className="flex flex-col lg:min-h-0">
       <p className="shrink-0 px-4 pb-2.5 text-[13px] text-ink-soft">Setiap file atau postingan jadi 1 iklan di Meta.</p>
       <div className="shrink-0 grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 px-4 py-2 text-[11px] font-semibold text-ink-soft border-y border-line bg-paper/60">
         <span>No</span><span>Iklan di Meta</span><span className="text-right">Sumber</span>
       </div>
-      <ol ref={listRef} className="relative max-h-[18rem] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto">
+      <ol ref={listRef} className="relative max-h-[18rem] lg:max-h-none lg:min-h-0 overflow-y-auto">
         {lines.map(line => {
           const active = line.rowId === activeRowId;
           return (
@@ -159,8 +159,8 @@ export default function SidePanel({ ngoName, adRows, activeRowId, onJump, ads, i
   const lines = getLedger(adRows);
 
   return (
-    <div className="flex flex-col gap-3 lg:h-full">
-      <section className="leaf flex flex-col overflow-hidden lg:flex-1 lg:min-h-0">
+    <div className="flex flex-col gap-3 lg:min-h-0">
+      <section className="leaf flex flex-col overflow-hidden lg:min-h-0">
         <div className="shrink-0 flex items-center gap-1 p-1.5 border-b border-line" role="tablist" aria-label="Pratinjau dan rincian iklan">
           {TABS.map(t => {
             const on = tab === t.key;
@@ -177,14 +177,14 @@ export default function SidePanel({ ngoName, adRows, activeRowId, onJump, ads, i
           })}
         </div>
         {tab === 'preview' ? (
-          <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" className="lg:flex-1 lg:min-h-0 overflow-y-auto">
+          <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" className="lg:min-h-0 overflow-y-auto">
             <p className="px-4 pt-3 text-[13px] text-ink-soft truncate">
               Iklan <Fig className="text-plum-deep">{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
             </p>
             <Preview ngoName={ngoName} row={row} />
           </div>
         ) : (
-          <div id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" className="flex flex-col pt-3 lg:flex-1 lg:min-h-0">
+          <div id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" className="flex flex-col pt-3 lg:min-h-0">
             <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
           </div>
         )}

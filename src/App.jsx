@@ -273,7 +273,7 @@ export default function App() {
                   onAdd={handleAddRow}
                 />
               </div>
-              <aside className="lg:sticky lg:top-5 lg:h-[calc(100vh-6.5rem)] lg:min-h-[32rem]" aria-label="Pratinjau, rincian iklan dan kirim">
+              <aside className="lg:sticky lg:top-5 lg:flex lg:flex-col lg:max-h-[calc(100vh-6.5rem)]" aria-label="Pratinjau, rincian iklan dan kirim">
                 <SidePanel
                   ngoName={ngoName}
                   adRows={adRows}
