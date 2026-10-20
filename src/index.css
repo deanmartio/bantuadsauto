@@ -2,7 +2,7 @@
 
 /* KawanBantu brand, 70:20:10. About 70% calm neutrals (lavender-grey ground, white leaves),
    20% teal for actions, focus and states, 10% purple for identity: card numbers, section markers,
-   ledger figures, the current step and the stamp. The primary button carries the full teal-purple gradient. */
+   ledger figures, the current step and the stamp. The primary button is solid deep teal. */
 @theme {
   --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Martian Mono', ui-monospace, monospace;
@@ -108,12 +108,12 @@
     font-size: 0.9375rem;
     font-weight: 700;
     color: #fff;
-    background: linear-gradient(120deg, var(--color-brand) 10%, var(--color-plum) 100%);
-    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-plum) 70%, transparent);
-    transition: filter 150ms ease-out, transform 150ms ease-out, opacity 150ms ease-out;
+    background: var(--color-brand-deep);
+    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-brand-deep) 70%, transparent);
+    transition: background-color 150ms ease-out, transform 150ms ease-out, opacity 150ms ease-out;
   }
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.06);
+    background: color-mix(in srgb, var(--color-brand-deep) 84%, black);
   }
   .btn-primary:active:not(:disabled) {
     transform: translateY(1px);

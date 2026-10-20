@@ -51,7 +51,7 @@ export default function CreativeInput({ creative, index, total, inputId, invalid
   const isFolder = isFolderLink(creative.link);
 
   return (
-    <div className="rounded-xl border border-line bg-paper/70 p-2.5">
+    <div>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs text-ink-faint w-5 shrink-0 tabular-nums">{index + 1}</span>
         <input

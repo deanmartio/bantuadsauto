@@ -39,14 +39,15 @@ export default function SendProgress({ stage, bytes }) {
   const shown = stage === 'done' ? 100 : stage === 'prepare' ? 4 : pct;
 
   return (
-    <section ref={ref} className="leaf p-5 sm:p-6 scroll-mt-6" role="status" aria-live="polite">
+    <section ref={ref} className="leaf p-5 sm:p-6 scroll-mt-6">
+      <span className="sr-only" role="status" aria-live="polite">{stage === 'done' ? STEPS[2].label : STEPS[Math.max(0, current)].label}</span>
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-ink">Mengirim submission</h2>
         <Fig className="text-sm text-plum-deep">{Math.round(shown)}%</Fig>
       </div>
-      <div className="h-2.5 rounded-full bg-paper-deep overflow-hidden" aria-hidden="true">
+      <div className="h-2.5 rounded-full bg-paper-deep overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shown)} aria-label="Mengirim submission">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-brand to-plum transition-[width] duration-300 ease-out relative overflow-hidden"
+          className="h-full rounded-full bg-plum transition-[width] duration-300 ease-out relative overflow-hidden"
           style={{ width: `${shown}%` }}
         >
           {stage !== 'done' && <span className="absolute inset-0 progress-sheen" />}
@@ -62,7 +63,7 @@ export default function SendProgress({ stage, bytes }) {
                 done ? 'bg-brand text-white' : active ? 'border-2 border-plum' : 'border border-line-strong'
               }`}>
                 {done ? <Icon name="check" className="w-3.5 h-3.5" strokeWidth={3} />
-                  : active ? <span className="w-2.5 h-2.5 rounded-full bg-plum animate-pulse" /> : null}
+                  : active ? <span className="w-2.5 h-2.5 rounded-full bg-plum motion-safe:animate-pulse" /> : null}
               </span>
               <span className={done ? 'text-ink' : active ? 'text-ink font-medium' : 'text-ink-faint'}>
                 {s.label}

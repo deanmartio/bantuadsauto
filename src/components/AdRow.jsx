@@ -25,11 +25,11 @@ function summaryLabel(row) {
 
 // One numbered step of the card. The purple rail on the left ties the three steps together and
 // gives each group of fields its own clear space.
-function Step({ n, title, note, aside, last, children }) {
+function Step({ icon, title, note, aside, last, children }) {
   return (
     <div className="grid grid-cols-[2rem_minmax(0,1fr)] sm:grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 sm:gap-x-4">
       <div className="flex flex-col items-center" aria-hidden="true">
-        <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-plum-tint text-plum-deep font-mono text-sm font-medium flex items-center justify-center shrink-0">{n}</span>
+        <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-plum-tint text-plum-deep flex items-center justify-center shrink-0"><Icon name={icon} className="w-4 h-4" /></span>
         {!last && <span className="flex-1 w-px bg-plum/25 my-2" />}
       </div>
       <div className={`min-w-0 ${last ? '' : 'pb-8'}`}>
@@ -125,9 +125,9 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
       {!collapsed && (
         <div id={`ad-${row.id}-body`} className="px-5 sm:px-6 pt-6 pb-7">
           {/* 1. Info iklan */}
-          <Step n={1} title="Info iklan" note="Dari mana materinya, namanya, dan ke mana donatur diarahkan.">
+          <Step icon="link" title="Info iklan" note="Dari mana materinya, namanya, dan ke mana donatur diarahkan.">
             <div className="flex flex-col gap-5">
-              <div className="inline-grid grid-cols-2 rounded-xl border border-line bg-paper p-1 w-full sm:w-auto sm:self-start" role="group" aria-label="Sumber iklan">
+              <div className="grid grid-cols-1 sm:inline-grid sm:grid-cols-2 rounded-xl border border-line bg-paper p-1 w-full sm:w-auto sm:self-start" role="group" aria-label="Sumber iklan">
                 {[
                   { value: 'drive', label: 'Video/Gambar dari Google Drive' },
                   { value: 'post', label: 'Postingan IG/FB yang sudah ada' },
@@ -135,7 +135,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
                   const on = (row.source || 'drive') === opt.value;
                   return (
                     <button key={opt.value} type="button" onClick={() => updateField('source', opt.value)} aria-pressed={on}
-                      className={`rounded-lg px-4 py-2 text-[13px] font-medium leading-snug transition-colors duration-150 ${
+                      className={`rounded-lg px-4 py-2 text-[13px] font-medium leading-snug text-left sm:text-center transition-colors duration-150 ${
                         on ? 'bg-white text-ink shadow-[0_1px_3px_rgb(43_32_51/0.12)]' : 'text-ink-soft hover:text-ink'
                       }`}>
                       {opt.label}
@@ -162,7 +162,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
 
           {/* 2. Creatives, or existing post links */}
           {isPost ? (
-            <Step n={2} title="Postingan" note="Video dan caption diambil dari postingan, jadi teks iklan tidak perlu diisi." last>
+            <Step icon="image" title="Postingan" note="Video dan caption diambil dari postingan, jadi teks iklan tidak perlu diisi." last>
               <Label htmlFor={fieldId.post(row, 0)} required>Link Postingan Instagram/Facebook</Label>
               <div className="flex flex-col gap-2">
                 {postLinks.map((link, pi) => {
@@ -199,9 +199,9 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
               </div>
             </Step>
           ) : (
-            <Step n={2} title="Creatives" note="Setiap file jadi 1 iklan di Meta."
+            <Step icon="video" title="Creatives" note="Setiap file jadi 1 iklan di Meta."
               aside={
-                <button type="button" onClick={() => setShowDriveGuide(true)} className="flex items-center gap-1 text-[13px] font-medium text-plum-deep hover:underline pt-0.5">
+                <button type="button" onClick={() => setShowDriveGuide(true)} className="flex items-center gap-1 text-[13px] font-medium text-brand-deep hover:underline pt-0.5">
                   <Icon name="info" className="w-3.5 h-3.5" /> Panduan Upload Link Drive
                 </button>
               }>
@@ -232,7 +232,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
 
           {/* 3. Teks iklan */}
           {!isPost && (
-            <Step n={3} title="Teks iklan" note="Yang dibaca orang di atas dan di bawah videonya." last>
+            <Step icon="text" title="Teks iklan" note="Yang dibaca orang di atas dan di bawah videonya." last>
               <div className="flex flex-col gap-5">
                 <div>
                   <Label htmlFor={fieldId.primaryText(row)} required

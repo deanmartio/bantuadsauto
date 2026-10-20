@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AdPreview from './AdPreview';
 import { Icon, Fig } from './ui';
 import { getExpandedCreatives, getExpandedPosts } from '../utils/driveUtils';
@@ -45,12 +45,12 @@ function Ledger({ lines, activeRowId, onJump }) {
   }, [signature, activeRowId]);
 
   return (
-    <div className="flex flex-col min-h-0 flex-1">
+    <div className="flex flex-col lg:flex-1 lg:min-h-0">
       <p className="shrink-0 px-4 pb-2.5 text-[13px] text-ink-soft">Setiap file atau postingan jadi 1 iklan di Meta.</p>
       <div className="shrink-0 grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 px-4 py-2 text-[11px] font-semibold text-ink-soft border-y border-line bg-paper/60">
         <span>No</span><span>Iklan di Meta</span><span className="text-right">Sumber</span>
       </div>
-      <ol ref={listRef} className="relative flex-1 min-h-[7.5rem] overflow-y-auto">
+      <ol ref={listRef} className="relative max-h-[18rem] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto">
         {lines.map(line => {
           const active = line.rowId === activeRowId;
           return (
@@ -144,30 +144,50 @@ function ActionCard({ cards, ads, issues, showIssues, onContinue, onJumpIssue })
   );
 }
 
-// Preview of the card being edited on top, the passbook ledger of every ad below it, and the
-// send-off at the bottom. On wide screens the whole column follows the NGO down the page.
+// One card with two tabs, the preview of the card being edited and the passbook ledger of every
+// ad, so each gets the full height of a laptop screen. The send-off sits below. On wide screens
+// the whole column follows the NGO down the page.
+const TABS = [
+  { key: 'preview', label: 'Pratinjau' },
+  { key: 'ledger', label: 'Rincian iklan' },
+];
+
 export default function SidePanel({ ngoName, adRows, activeRowId, onJump, ads, issues, showIssues, onContinue, onJumpIssue }) {
+  const [tab, setTab] = useState('preview');
   const index = Math.max(0, adRows.findIndex(r => r.id === activeRowId));
   const row = adRows[index];
   const lines = getLedger(adRows);
 
   return (
     <div className="flex flex-col gap-3 lg:h-full">
-      <section className="leaf shrink-0" aria-labelledby="preview-title">
-        <div className="flex items-baseline justify-between px-4 pt-3.5">
-          <h2 id="preview-title" className="text-sm font-semibold text-ink">Pratinjau</h2>
-          <span className="text-[13px] text-ink-soft truncate ml-3">
-            Iklan <Fig className="text-plum-deep">{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
-          </span>
+      <section className="leaf flex flex-col overflow-hidden lg:flex-1 lg:min-h-0">
+        <div className="shrink-0 flex items-center gap-1 p-1.5 border-b border-line" role="tablist" aria-label="Pratinjau dan rincian iklan">
+          {TABS.map(t => {
+            const on = tab === t.key;
+            return (
+              <button key={t.key} type="button" role="tab" id={`tab-${t.key}`} aria-selected={on} aria-controls={`panel-${t.key}`}
+                onClick={() => setTab(t.key)}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-150 ${
+                  on ? 'bg-plum-tint text-plum-deep' : 'text-ink-soft hover:text-ink hover:bg-paper'
+                }`}>
+                {t.label}
+                {t.key === 'ledger' && <Fig className={`text-xs rounded-md px-1.5 py-0.5 ${on ? 'bg-white text-plum-deep' : 'bg-paper-deep text-ink-soft'}`}>{ads}</Fig>}
+              </button>
+            );
+          })}
         </div>
-        <Preview ngoName={ngoName} row={row} />
-      </section>
-      <section className="leaf flex flex-col min-h-0 lg:flex-1 overflow-hidden" aria-labelledby="ledger-title">
-        <div className="flex items-baseline justify-between px-4 pt-3.5 pb-1">
-          <h2 id="ledger-title" className="text-sm font-semibold text-ink">Rincian iklan</h2>
-          <span className="text-[13px] text-ink-soft">dicetak per baris</span>
-        </div>
-        <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
+        {tab === 'preview' ? (
+          <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" className="lg:flex-1 lg:min-h-0 overflow-y-auto">
+            <p className="px-4 pt-3 text-[13px] text-ink-soft truncate">
+              Iklan <Fig className="text-plum-deep">{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
+            </p>
+            <Preview ngoName={ngoName} row={row} />
+          </div>
+        ) : (
+          <div id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" className="flex flex-col pt-3 lg:flex-1 lg:min-h-0">
+            <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
+          </div>
+        )}
       </section>
       <ActionCard cards={adRows.length} ads={ads} issues={issues} showIssues={showIssues} onContinue={onContinue} onJumpIssue={onJumpIssue} />
     </div>

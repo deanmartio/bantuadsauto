@@ -11,8 +11,8 @@ export default function Header({ screen = 'form' }) {
   const current = STEPS.findIndex(s => s.key === screen);
   return (
     <header className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 pb-2 flex items-center justify-between gap-4">
-      <img src="/logo.png" alt="BantuAds" className="h-9 w-auto" width="144" height="36" />
-      <ol className="flex items-center gap-1 sm:gap-2 rounded-full bg-white border border-line px-2 py-1.5" aria-label="Langkah submission">
+      <img src="/logo.png" alt="BantuAds" className="h-7 sm:h-9 w-auto" width="144" height="36" />
+      <ol className="flex items-center gap-0.5 sm:gap-2 rounded-full bg-white border border-line px-2 py-1.5" aria-label="Langkah submission">
         {STEPS.map((s, i) => {
           const done = i < current;
           const active = i === current;
@@ -25,7 +25,7 @@ export default function Header({ screen = 'form' }) {
                 }`}>
                   {done ? <Icon name="check" className="w-3 h-3" strokeWidth={3} /> : i + 1}
                 </span>
-                <span className={active ? 'pr-1' : 'hidden sm:inline pr-1'}>{s.label}</span>
+                <span className={`whitespace-nowrap ${active ? 'pr-1' : 'hidden sm:inline pr-1'}`}>{s.label}</span>
               </span>
             </li>
           );
