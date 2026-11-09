@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { getDuplicateAdNames } from '../utils/validation';
 import { getSubmissionSummary } from '../utils/zipGenerator';
-import { getExpandedCreatives, getExpandedPosts, getLocalDateString } from '../utils/driveUtils';
+import { getExpandedCreatives, getExpandedPosts, getInstagramPosts, getLocalDateString } from '../utils/driveUtils';
 import { isSubmitEnabled } from '../utils/submitService';
 import { Icon, Fig } from './ui';
 import SendProgress from './SendProgress';
+import CollabStep from './CollabGuide';
 
 const MODE_LABEL = { drive: 'File dari Google Drive', existing_post: 'Postingan yang sudah ada', mixed: 'Drive dan postingan' };
 
-export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubmit, onContinueWithoutSend }) {
+export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubmit, onContinueWithoutSend, onSetCollab }) {
   const duplicateNames = getDuplicateAdNames(adRows);
   const summary = getSubmissionSummary(adRows);
   const canSubmit = isSubmitEnabled();
@@ -17,8 +18,21 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
   const [downloaded, setDownloaded] = useState(false); // ZIP already saved; a retry only re-sends
   const [stage, setStage] = useState(null);
   const [bytes, setBytes] = useState(0);
+  const igPosts = getInstagramPosts(adRows);
+  const pendingCollab = igPosts.filter(p => !p.confirmed).length;
+  const [nudge, setNudge] = useState(false); // tried to send before every post was ticked
+  const collabRef = useRef(null);
+
+  // Instagram posts need @kawanbantu as collaborator first: point the NGO at the step instead of sending.
+  function collabReady() {
+    if (pendingCollab === 0) return true;
+    setNudge(true);
+    collabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return false;
+  }
 
   async function handleSend() {
+    if (!collabReady()) return;
     setSending(true);
     setSendError('');
     try {
@@ -35,7 +49,10 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Review Sebelum Kirim</h1>
-        <p className="text-[15px] text-ink-soft mt-2">Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.</p>
+        <p className="text-[15px] text-ink-soft mt-2">
+          Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.
+          {pendingCollab > 0 && <> Ada <span className="font-semibold text-plum-deep">1 langkah terakhir</span> di bawah sebelum kirim.</>}
+        </p>
       </div>
 
       <section className="leaf p-5 mb-4">
@@ -103,8 +120,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                       <Fig className="text-xs text-plum-deep">{String(offset + ai + 1).padStart(3, '0')}</Fig>
                       <span className="min-w-0">
                         <span className="font-semibold text-ink">{ad.adName}</span>
-                        <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>
-                      </span>
+                        <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>                      </span>
                       <span className="text-[11px] font-semibold tracking-[0.06em] text-ink-soft text-right">{isPost ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</span>
                     </li>
                   ))}
@@ -116,6 +132,7 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
       </div>
 
       <div className="mt-6">
+        {igPosts.length > 0 && <CollabStep ref={collabRef} posts={igPosts} nudge={nudge} onSet={onSetCollab} />}
         {sending && stage ? (
           <SendProgress stage={stage} bytes={bytes} />
         ) : (
@@ -146,12 +163,17 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                     <Icon name="send" /> {sendError ? 'Coba Kirim Lagi' : 'Kirim ke KawanBantu'}
                   </button>
                 ) : (
-                  <button type="button" onClick={onExport} className="btn-primary">
+                  <button type="button" onClick={() => collabReady() && onExport()} className="btn-primary">
                     <Icon name="download" /> Download ZIP
                   </button>
                 )}
               </div>
             </div>
+            {pendingCollab > 0 && nudge && (
+              <p className="text-[13px] font-medium text-danger mt-3 sm:text-right" role="alert">
+                Centang dulu <Fig>{pendingCollab}</Fig> postingan di atas setelah @kawanbantu diundang.
+              </p>
+            )}
             {canSubmit && !sendError && (
               <p className="text-[13px] text-ink-soft mt-3 sm:text-right">Salinan file ZIP otomatis tersimpan di folder Downloads.</p>
             )}

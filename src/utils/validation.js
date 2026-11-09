@@ -6,8 +6,7 @@ export const fieldId = {
   adName: row => `field-ad-${row.id}-name`,
   campaignLink: row => `field-ad-${row.id}-link`,
   creative: (row, ci) => `field-ad-${row.id}-creative-${ci}`,
-  post: (row, pi) => `field-ad-${row.id}-post-${pi}`,
-  primaryText: row => `field-ad-${row.id}-primary`,
+  post: (row, pi) => `field-ad-${row.id}-post-${pi}`,  primaryText: row => `field-ad-${row.id}-primary`,
   headline: row => `field-ad-${row.id}-headline`,
 };
 
@@ -31,8 +30,7 @@ export function getIssues(ngoName, adRows) {
       if (links.length === 0) add(null, row.id, `Iklan ${n}: Minimal 1 link postingan harus diisi.`);
       links.forEach((l, li) => {
         if (!l.trim()) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Link belum diisi.`);
-        else if (!isPostLink(l)) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Harus link Instagram atau Facebook (https://...).`);
-      });
+        else if (!isPostLink(l)) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Harus link Instagram atau Facebook (https://...).`);      });
       return;
     }
 
