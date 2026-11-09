@@ -22,7 +22,7 @@ function domainOf(url) {
 
 // The frame takes the file's real proportions from the thumbnail once it loads, within what Meta's
 // feed shows: anything taller than 4:5 (a 9:16 video) is masked to 4:5, wider than 1.91:1 is cropped.
-function Media({ creative, index, total, onPrev, onNext, onRatio }) {
+function Media({ creative, onRatio }) {
   const [failed, setFailed] = useState(false);
   const [ratio, setRatio] = useState(1);
   // A folder link has no file id of its own; look the folder up and take the Nth file.
@@ -69,22 +69,31 @@ function Media({ creative, index, total, onPrev, onNext, onRatio }) {
           </span>
         </span>
       )}
-      {total > 1 && (
-        <>
-          <span className="absolute top-2 right-2 text-[11px] font-semibold bg-ink/70 text-white rounded-full px-2 py-0.5 tabular-nums">
-            {index + 1}/{total}
-          </span>
-          <button type="button" onClick={onPrev} disabled={index === 0} aria-label="Creative sebelumnya"
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 text-ink shadow flex items-center justify-center hover:bg-white disabled:opacity-0 transition-opacity">
-            <Icon name="arrowLeft" className="w-4 h-4" strokeWidth={2.5} />
-          </button>
-          <button type="button" onClick={onNext} disabled={index === total - 1} aria-label="Creative berikutnya"
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 text-ink shadow flex items-center justify-center hover:bg-white disabled:opacity-0 transition-opacity">
-            <Icon name="arrowRight" className="w-4 h-4" strokeWidth={2.5} />
-          </button>
-        </>
-      )}
     </div>
+  );
+}
+
+// One small tile per file in the picker. Separate, numbered tiles (not carousel dots or arrows)
+// so it reads as N separate ads, which is what Meta gets.
+function Tile({ creative, n, active, onPick }) {
+  const [failed, setFailed] = useState(false);
+  const folder = useFolderFiles(creative.isFolder ? creative.link : '');
+  const id = creative.isFolder ? folder.files[creative.folderFileIndex]?.id || null : driveFileId(creative.link);
+  return (
+    <li>
+      <button type="button" onClick={onPick} aria-pressed={active} aria-label={`Lihat pratinjau iklan ${n}`}
+        className={`block w-11 rounded-lg p-0.5 transition-colors duration-150 ${active ? 'bg-plum' : 'hover:bg-line'}`}>
+        <span className="relative block aspect-[4/5] rounded-md overflow-hidden bg-paper-deep">
+          {id && !failed ? (
+            <img src={`https://drive.google.com/thumbnail?id=${id}&sz=w160`} alt="" referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-cover" onError={() => setFailed(true)} />
+          ) : (
+            <Icon name={creative.type === 'Video' ? 'video' : 'image'} className="absolute inset-0 m-auto w-4 h-4 text-ink-faint" />
+          )}
+        </span>
+        <span className={`block text-center font-mono text-[11px] leading-5 tabular-nums ${active ? 'text-white' : 'text-ink-soft'}`}>{n}</span>
+      </button>
+    </li>
   );
 }
 
@@ -93,7 +102,6 @@ export default function AdPreview({ ngoName, row }) {
   const [pick, setPick] = useState(0);
   const [ratio, setRatio] = useState(1);
   const idx = Math.min(pick, Math.max(0, creatives.length - 1));
-  const go = i => setPick(Math.max(0, Math.min(creatives.length - 1, i)));
   const text = row.primaryText.trim();
   const shown = [...text].length > PRIMARY_VISIBLE ? [...text].slice(0, PRIMARY_VISIBLE).join('').trimEnd() : text;
   const truncated = shown !== text;
@@ -103,19 +111,19 @@ export default function AdPreview({ ngoName, row }) {
   return (
     <figure className="m-0">
       {creatives.length > 1 && (
-        <div className="mx-auto max-w-[272px] mb-2.5 flex items-center justify-between gap-2" role="group" aria-label="Pilih creative untuk pratinjau">
-          <button type="button" onClick={() => go(idx - 1)} disabled={idx === 0}
-            className="btn-ghost !px-2 !py-1 disabled:opacity-35" aria-label="Creative sebelumnya">
-            <Icon name="arrowLeft" className="w-4 h-4" />
-          </button>
-          <span className="min-w-0 flex items-baseline justify-center gap-1.5 text-[13px] text-ink-soft" aria-live="polite">
-            <span className="font-semibold text-ink truncate">{creatives[idx]?.adName || `Creative ${idx + 1}`}</span>
-            <span className="font-mono text-xs tabular-nums shrink-0">{idx + 1}/{creatives.length}</span>
-          </span>
-          <button type="button" onClick={() => go(idx + 1)} disabled={idx === creatives.length - 1}
-            className="btn-ghost !px-2 !py-1 disabled:opacity-35" aria-label="Creative berikutnya">
-            <Icon name="arrowRight" className="w-4 h-4" />
-          </button>
+        <div className="mb-3">
+          <p className="text-[13px] text-ink">
+            Jadi <span className="font-semibold">{creatives.length} iklan terpisah</span> di Meta
+          </p>
+          <p className="text-xs text-ink-soft mb-2">Teksnya sama, {creatives[0].type === 'Video' ? 'videonya' : 'gambarnya'} berbeda. Pilih untuk melihat:</p>
+          <ul className="flex flex-wrap gap-1.5" aria-label="Pilih iklan untuk pratinjau">
+            {creatives.map((c, i) => (
+              <Tile key={`${i}-${c.link}`} creative={c} n={i + 1} active={i === idx} onPick={() => setPick(i)} />
+            ))}
+          </ul>
+          <p className="mt-3 text-[13px] text-ink-soft truncate" aria-live="polite">
+            Pratinjau: <span className="font-semibold text-ink">{creatives[idx]?.adName.trim().replace(/^\d+$/, '') || `Iklan ${idx + 1}`}</span>
+          </p>
         </div>
       )}
       <div className={`mx-auto w-full max-w-[272px] rounded-2xl border border-line bg-white overflow-hidden shadow-[0_6px_20px_-12px_rgb(43_32_51/0.35)]`}>
@@ -134,8 +142,7 @@ export default function AdPreview({ ngoName, row }) {
           {text ? shown : <span className="text-ink-faint">Primary text akan muncul di sini.</span>}
           {truncated && <span className="text-ink-faint">… lihat selengkapnya</span>}
         </p>
-        <Media key={`${idx}-${creatives[idx]?.link || ''}`} creative={creatives[idx]} index={idx} total={creatives.length}
-          onPrev={() => go(idx - 1)} onNext={() => go(idx + 1)} onRatio={setRatio} />
+        <Media key={`${idx}-${creatives[idx]?.link || ''}`} creative={creatives[idx]} onRatio={setRatio} />
         <div className="flex items-center gap-3 px-3 py-2.5 bg-paper">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] uppercase text-ink-faint truncate">{domain || 'link campaign'}</p>
