@@ -49,12 +49,37 @@ export function isPostRow(row) {
 // One ad per post link, named like Drive creatives ("Abah Kani 1", "Abah Kani 2"...).
 export function getExpandedPosts(row) {
   if (!isPostRow(row)) return [];
-  const links = (row.postLinks || []).map(l => l.trim()).filter(Boolean);
-  return links.map((postLink, idx) => ({ postLink, adName: buildAdName(row.adName.trim(), idx, links.length) }));
+  const links = (row.postLinks || [])
+    .map((l, i) => ({ postLink: l.trim(), collaboratorConfirmed: Boolean(row.postCollab?.[i]) }))
+    .filter(p => p.postLink);
+  return links.map((p, idx) => ({ ...p, adName: buildAdName(row.adName.trim(), idx, links.length) }));
 }
 
 export function isPostLink(link) {
   return /^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.com|fb\.watch)\/\S+$/i.test(link.trim());
+}
+
+// Instagram posts must have @kawanbantu as a collaborator before KawanBantu can run them as ads.
+export const KAWANBANTU_IG = 'kawanbantu';
+
+export function isInstagramLink(link) {
+  return /^https:\/\/(www\.|m\.)?instagram\.com\/\S+$/i.test((link || '').trim());
+}
+
+// Every Instagram post in the submission, with where its tick lives (row id + link index).
+export function getInstagramPosts(adRows) {
+  return adRows.filter(isPostRow).flatMap(row => {
+    const filled = (row.postLinks || []).map((l, i) => ({ link: l.trim(), i })).filter(x => x.link);
+    return filled
+      .map((x, idx) => ({
+        rowId: row.id,
+        pi: x.i,
+        postLink: x.link,
+        adName: buildAdName(row.adName.trim(), idx, filled.length),
+        confirmed: Boolean(row.postCollab?.[x.i]),
+      }))
+      .filter(p => isInstagramLink(p.postLink));
+  });
 }
 
 export function getLocalDateString() {

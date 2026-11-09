@@ -20,6 +20,7 @@ function createEmptyRow() {
     campaignLink: '',
     source: 'drive', // 'drive' = Drive videos/images, 'post' = existing IG/FB post
     postLinks: [''],
+    postCollab: [false], // per post link: NGO confirmed @kawanbantu is invited as collaborator
     creatives: [{ link: '', type: 'Video', count: 1 }],
     primaryText: '',
     headline: '',
@@ -35,6 +36,7 @@ function migrateRow(row) {
     const { postLink, ...rest } = row;
     row = { ...rest, postLinks: [postLink || ''] };
   }
+  if (!row.postCollab) row = { ...row, postCollab: row.postLinks.map(() => false) };
   if (row.primaryTexts || row.headlines) {
     const { primaryTexts, headlines, ...rest } = row;
     return {
@@ -98,6 +100,14 @@ export default function App() {
 
   const handleUpdateRow = useCallback((index, updatedRow) => {
     setAdRows(prev => prev.map((r, i) => i === index ? updatedRow : r));
+  }, []);
+
+  // Ticked on the review screen: @kawanbantu is invited as collaborator on this Instagram post.
+  const setCollab = useCallback((rowId, pi, value) => {
+    setAdRows(prev => prev.map(r => r.id !== rowId ? r : {
+      ...r,
+      postCollab: (r.postLinks || []).map((_, i) => i === pi ? value : Boolean(r.postCollab?.[i])),
+    }));
   }, []);
 
   const handleDeleteRow = useCallback((index) => {
@@ -298,6 +308,7 @@ export default function App() {
             onExport={handleExport}
             onSubmit={handleSubmit}
             onContinueWithoutSend={handleContinueWithoutSend}
+            onSetCollab={setCollab}
           />
         )}
 

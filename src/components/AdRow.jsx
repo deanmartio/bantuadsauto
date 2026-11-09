@@ -50,6 +50,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
   const [showDriveGuide, setShowDriveGuide] = useState(false);
   const isPost = row.source === 'post';
   const postLinks = row.postLinks?.length ? row.postLinks : [''];
+  const postCollab = row.postCollab || [];
   const errorFor = id => (showIssues ? short(issues.find(i => i.id === id)?.message) : null);
   const complete = issues.length === 0 && !isDuplicate;
   const problems = issues.length + (isDuplicate ? 1 : 0);
@@ -65,9 +66,25 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
     updateField('creatives', row.creatives.map((c, i) => i === ci ? { ...c, ...patch } : c));
   }
 
+  // postCollab (ticked on the review screen) runs parallel to postLinks. A changed link is a
+  // different post, so its tick resets.
   function updatePostLink(pi, value) {
-    updateField('postLinks', postLinks.map((l, i) => i === pi ? value : l));
+    const changed = value.trim() !== (postLinks[pi] || '').trim();
+    onUpdate(index, {
+      ...row,
+      postLinks: postLinks.map((l, i) => i === pi ? value : l),
+      postCollab: postLinks.map((_, i) => i === pi ? (changed ? false : Boolean(postCollab[i])) : Boolean(postCollab[i])),
+    });
   }
+
+  function removePost(pi) {
+    onUpdate(index, {
+      ...row,
+      postLinks: postLinks.filter((_, i) => i !== pi),
+      postCollab: postLinks.map((_, i) => Boolean(postCollab[i])).filter((_, i) => i !== pi),
+    });
+  }
+
 
   const nameError = errorFor(fieldId.adName(row)) || (isDuplicate ? 'Nama iklan ini sudah dipakai iklan lain.' : null);
   const linkError = errorFor(fieldId.campaignLink(row));
@@ -175,7 +192,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
                           placeholder="https://www.instagram.com/reel/..." aria-label={`Link postingan ${pi + 1}`}
                           aria-invalid={Boolean(err) || undefined} className="field min-w-0 flex-1" />
                         {postLinks.length > 1 && (
-                          <button type="button" onClick={() => updateField('postLinks', postLinks.filter((_, i) => i !== pi))}
+                          <button type="button" onClick={() => removePost(pi)}
                             aria-label={`Hapus postingan ${pi + 1}`} className="btn-ghost !p-1.5 shrink-0 hover:!text-danger">
                             <Icon name="trash" />
                           </button>
@@ -187,16 +204,11 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
                 })}
               </div>
               {postLinks.length < 5 && (
-                <button type="button" onClick={() => updateField('postLinks', [...postLinks, ''])} className="btn-ghost mt-2 !text-brand-deep">
+                <button type="button" onClick={() => onUpdate(index, { ...row, postLinks: [...postLinks, ''], postCollab: [...postLinks.map((_, i) => Boolean(postCollab[i])), false] })}
+                  className="btn-ghost mt-2 !text-brand-deep">
                   <Icon name="plus" /> Tambah Postingan
                 </button>
               )}
-              <div className="mt-4 rounded-xl bg-plum-tint px-4 py-3.5">
-                <p className="text-[13px] font-semibold text-ink">Supaya iklan bisa jalan:</p>
-                <p className="text-[13px] text-ink-soft mt-1 leading-relaxed">
-                  @kawanbantu sudah jadi kolaborator di setiap postingan, dan permintaan Partnership Ads dari @kawanbantu sudah kamu terima di Instagram.
-                </p>
-              </div>
             </Step>
           ) : (
             <Step icon="video" title="Creatives" note="Setiap file jadi 1 iklan di Meta."
