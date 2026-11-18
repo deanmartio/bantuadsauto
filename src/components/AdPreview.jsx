@@ -82,16 +82,16 @@ function Tile({ creative, n, active, onPick }) {
   return (
     <li>
       <button type="button" onClick={onPick} aria-pressed={active} aria-label={`Lihat pratinjau iklan ${n}`}
-        className={`block w-11 rounded-lg p-0.5 transition-colors duration-150 ${active ? 'bg-plum' : 'hover:bg-line'}`}>
-        <span className="relative block aspect-[4/5] rounded-md overflow-hidden bg-paper-deep">
+        className={`block w-10 rounded-xl p-0.5 transition-colors duration-150 ${active ? 'bg-white' : 'hover:bg-white/20'}`}>
+        <span className="relative block aspect-[4/5] rounded-[9px] overflow-hidden bg-white/15">
           {id && !failed ? (
             <img src={`https://drive.google.com/thumbnail?id=${id}&sz=w160`} alt="" referrerPolicy="no-referrer"
               className="absolute inset-0 w-full h-full object-cover" onError={() => setFailed(true)} />
           ) : (
-            <Icon name={creative.type === 'Video' ? 'video' : 'image'} className="absolute inset-0 m-auto w-4 h-4 text-ink-faint" />
+            <Icon name={creative.type === 'Video' ? 'video' : 'image'} className="absolute inset-0 m-auto w-4 h-4 text-white/70" />
           )}
         </span>
-        <span className={`block text-center font-mono text-[11px] leading-5 tabular-nums ${active ? 'text-white' : 'text-ink-soft'}`}>{n}</span>
+        <span className={`block text-center font-mono text-[11px] leading-5 tabular-nums ${active ? 'text-desk font-medium' : 'text-white/80'}`}>{n}</span>
       </button>
     </li>
   );
@@ -108,57 +108,56 @@ export default function AdPreview({ ngoName, row }) {
   const name = ngoName.trim() || 'Nama NGO';
   const domain = domainOf(row.campaignLink);
 
+  // Drawn for the teal desk: the ad in a phone, the file picker and notes below in white.
   return (
     <figure className="m-0">
-      {creatives.length > 1 && (
-        <div className="mb-3">
-          <p className="text-[13px] text-ink">
-            Jadi <span className="font-semibold">{creatives.length} iklan terpisah</span> di Meta
-          </p>
-          <p className="text-xs text-ink-soft mb-2">Teksnya sama, {creatives[0].type === 'Video' ? 'videonya' : 'gambarnya'} berbeda. Pilih untuk melihat:</p>
-          <ul className="flex flex-wrap gap-1.5" aria-label="Pilih iklan untuk pratinjau">
-            {creatives.map((c, i) => (
-              <Tile key={`${i}-${c.link}`} creative={c} n={i + 1} active={i === idx} onPick={() => setPick(i)} />
-            ))}
-          </ul>
-          <p className="mt-3 text-[13px] text-ink-soft truncate" aria-live="polite">
-            Pratinjau: <span className="font-semibold text-ink">{creatives[idx]?.adName.trim().replace(/^\d+$/, '') || `Iklan ${idx + 1}`}</span>
-          </p>
-        </div>
-      )}
-      <div className={`mx-auto w-full max-w-[272px] rounded-2xl border border-line bg-white overflow-hidden shadow-[0_6px_20px_-12px_rgb(43_32_51/0.35)]`}>
-        <div className="flex items-center gap-2.5 px-3 py-2.5">
-          <span className="w-8 h-8 rounded-full bg-brand-tint text-brand-deep flex items-center justify-center text-sm font-bold shrink-0">
-            {name.charAt(0).toUpperCase()}
-          </span>
-          <div className="min-w-0 leading-tight">
-            <p className="text-[13px] font-semibold text-ink truncate">
-              {name} <span className="font-normal text-ink-soft">dengan</span> kawanbantu
-            </p>
-            <p className="text-[11px] text-ink-faint">Bersponsor</p>
+      <div className="mx-auto w-full max-w-[262px] rounded-[34px] bg-[#120E16] p-2.5 shadow-[0_30px_50px_-24px_rgb(0_0_0/0.55)]">
+        <div className="rounded-[26px] bg-white overflow-hidden">
+          <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
+            <span className="w-8 h-8 rounded-full bg-brand-deep text-white flex items-center justify-center text-sm font-bold shrink-0">
+              {name.charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0 leading-tight">
+              <p className="text-[13px] font-semibold text-ink truncate">
+                {name} <span className="font-normal text-ink-soft">dengan</span> kawanbantu
+              </p>
+              <p className="text-[11px] text-ink-faint">Bersponsor</p>
+            </div>
           </div>
-        </div>
-        <p className="px-3 pb-2.5 text-[13px] leading-snug text-ink whitespace-pre-line break-words">
-          {text ? shown : <span className="text-ink-faint">Primary text akan muncul di sini.</span>}
-          {truncated && <span className="text-ink-faint">… lihat selengkapnya</span>}
-        </p>
-        <Media key={`${idx}-${creatives[idx]?.link || ''}`} creative={creatives[idx]} onRatio={setRatio} />
-        <div className="flex items-center gap-3 px-3 py-2.5 bg-paper">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase text-ink-faint truncate">{domain || 'link campaign'}</p>
-            <p className="text-[13px] font-semibold text-ink leading-tight line-clamp-2 break-words">
-              {row.headline.trim() || <span className="text-ink-faint font-normal">Headline</span>}
-            </p>
+          <p className="px-3 pb-2.5 text-[13px] leading-snug text-ink whitespace-pre-line break-words">
+            {text ? shown : <span className="text-ink-faint">Primary text akan muncul di sini.</span>}
+            {truncated && <span className="text-ink-faint">… lihat selengkapnya</span>}
+          </p>
+          <Media key={`${idx}-${creatives[idx]?.link || ''}`} creative={creatives[idx]} onRatio={setRatio} />
+          <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-3.5 bg-paper">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] uppercase text-ink-faint truncate">{domain || 'link campaign'}</p>
+              <p className="text-[13px] font-semibold text-ink leading-tight line-clamp-2 break-words">
+                {row.headline.trim() || <span className="text-ink-faint font-normal">Headline</span>}
+              </p>
+            </div>
+            <span className="shrink-0 text-[11px] font-semibold bg-paper-deep text-ink rounded-md px-2 py-1.5">
+              Pelajari Selengkapnya
+            </span>
           </div>
-          <span className="shrink-0 text-xs font-semibold bg-paper-deep text-ink rounded-md px-2.5 py-1.5">
-            Pelajari Selengkapnya
-          </span>
         </div>
       </div>
       {ratio < 0.79 && (
-        <p className="mx-auto max-w-[272px] mt-2.5 text-xs text-ink-soft text-center leading-relaxed">
+        <p className="mx-auto max-w-[262px] mt-3 text-xs text-white/80 text-center leading-relaxed">
           Video vertikal tampil 4:5 di feed. Di Reels dan Stories tampil penuh 9:16.
         </p>
+      )}
+      {creatives.length > 1 && (
+        <div className="mt-4 text-center">
+          <ul className="flex flex-wrap justify-center gap-1.5" aria-label="Pilih iklan untuk pratinjau">
+            {creatives.map((c, i) => (
+              <Tile key={`${i}-${c.link}`} creative={c} n={c.seq} active={i === idx} onPick={() => setPick(i)} />
+            ))}
+          </ul>
+          <p className="mt-2.5 text-[13px] text-white/85" aria-live="polite">
+            <span className="font-semibold text-white">{creatives.length} iklan terpisah</span> di Meta. Teksnya sama, {creatives[0].type === 'Video' ? 'videonya' : 'gambarnya'} berbeda.
+          </p>
+        </div>
       )}
       <figcaption className="sr-only">Perkiraan tampilan di feed. Aslinya bisa sedikit berbeda.</figcaption>
     </figure>

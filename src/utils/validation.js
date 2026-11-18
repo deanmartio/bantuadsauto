@@ -1,12 +1,13 @@
-import { isPostRow, isPostLink } from './driveUtils';
+import { isPostLink, itemKind, needsAdText } from './driveUtils';
 
 // DOM ids for every field that can be missing, so the "belum lengkap" guide can jump to it.
 export const fieldId = {
   ngoName: () => 'field-ngo-name',
   adName: row => `field-ad-${row.id}-name`,
   campaignLink: row => `field-ad-${row.id}-link`,
-  creative: (row, ci) => `field-ad-${row.id}-creative-${ci}`,
-  post: (row, pi) => `field-ad-${row.id}-post-${pi}`,  primaryText: row => `field-ad-${row.id}-primary`,
+  item: (row, li) => `field-ad-${row.id}-item-${li}`,
+  newLink: row => `field-ad-${row.id}-new-link`,
+  primaryText: row => `field-ad-${row.id}-primary`,
   headline: row => `field-ad-${row.id}-headline`,
 };
 
@@ -24,22 +25,23 @@ export function getIssues(ngoName, adRows) {
     if (!row.adName.trim()) add(fieldId.adName(row), row.id, `Iklan ${n}: Nama iklan wajib diisi.`);
     if (!row.campaignLink.trim()) add(fieldId.campaignLink(row), row.id, `Iklan ${n}: Link halaman campaign wajib diisi.`);
 
-    if (isPostRow(row)) {
-      // Existing post: the post's own media and copy are used, so only the post links are needed.
-      const links = row.postLinks || [];
-      if (links.length === 0) add(null, row.id, `Iklan ${n}: Minimal 1 link postingan harus diisi.`);
-      links.forEach((l, li) => {
-        if (!l.trim()) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Link belum diisi.`);
-        else if (!isPostLink(l)) add(fieldId.post(row, li), row.id, `Iklan ${n}, postingan ${li + 1}: Harus link Instagram atau Facebook (https://...).`);      });
-      return;
-    }
-
-    if (row.creatives.length === 0) add(null, row.id, `Iklan ${n}: Minimal 1 link creative harus diisi.`);
-    row.creatives.forEach((c, ci) => {
-      if (!c.link.trim()) add(fieldId.creative(row, ci), row.id, `Iklan ${n}, creative ${ci + 1}: Link Google Drive belum diisi.`);
+    // One list of links per card: Drive files or folders and IG/FB posts, in any mix.
+    const items = row.items || [];
+    if (items.length === 0) add(fieldId.newLink(row), row.id, `Iklan ${n}: Tempel minimal 1 link Drive atau postingan.`);
+    items.forEach((item, li) => {
+      const id = fieldId.item(row, li);
+      const where = `Iklan ${n}, konten ${li + 1}`;
+      const kind = itemKind(item.link);
+      if (kind === 'empty') add(id, row.id, `${where}: Link belum diisi.`);
+      else if (kind === 'unknown') add(id, row.id, `${where}: Tempel link Google Drive, Instagram atau Facebook.`);
+      else if (kind === 'post' && !isPostLink(item.link)) add(id, row.id, `${where}: Link Instagram/Facebook harus diawali https://`);
     });
-    if (!row.primaryText.trim()) add(fieldId.primaryText(row), row.id, `Iklan ${n}: Primary text wajib diisi.`);
-    if (!row.headline.trim()) add(fieldId.headline(row), row.id, `Iklan ${n}: Headline wajib diisi.`);
+
+    // Posts keep their own caption; the text is only for Drive files.
+    if (needsAdText(row)) {
+      if (!row.primaryText.trim()) add(fieldId.primaryText(row), row.id, `Iklan ${n}: Primary text wajib diisi.`);
+      if (!row.headline.trim()) add(fieldId.headline(row), row.id, `Iklan ${n}: Headline wajib diisi.`);
+    }
   });
 
   return issues;

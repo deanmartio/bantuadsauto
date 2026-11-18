@@ -17,12 +17,13 @@ var CONFIG = {
   TIMEZONE: 'Asia/Jakarta',
   MAX_ZIP_BYTES: 15 * 1024 * 1024,
   MAX_ZIP_ENTRIES: 10,
-  MAX_ADS: 300,
-  MAX_POST_LINKS: 100,
+  // Safety caps against spam only; the app itself has no per-campaign limit (Dean, 2026-11-18).
+  MAX_ADS: 2000,
+  MAX_POST_LINKS: 2000,
   MAX_SUBMITS_PER_MINUTE: 20,
   MAX_SUBMITS_PER_NGO_PER_HOUR: 10,
   MAX_FOLDER_LOOKUPS_PER_MINUTE: 60,
-  MAX_FOLDER_FILES: 50,
+  MAX_FOLDER_FILES: 500,
   DATE_TOLERANCE_DAYS: 3,
 };
 
@@ -123,7 +124,7 @@ function handleSubmit_(body) {
     row[COL['Status'] - 1] = 'Received';
     row[COL['Notes'] - 1] = v.replaces ? safeCell_('Pengganti ' + v.replaces + ' (NGO mengedit setelah kirim)') : '';
     row[COL['Submission date'] - 1] = v.submissionDate;
-    row[COL['Post links'] - 1] = safeCell_(v.postLinks.join('\n'));
+    row[COL['Post links'] - 1] = safeCell_(fitCell_(v.postLinks));
     row[COL['Zip file ID'] - 1] = file.getId();
     row[COL['Zip SHA-256'] - 1] = sha;
     sheet.appendRow(row);
@@ -401,6 +402,22 @@ function sha256Hex_(bytes) {
 // Strip control characters (keep newlines) and trim.
 function cleanText_(s) {
   return String(s == null ? '' : s).replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '').trim();
+}
+
+// A Sheets cell holds at most 50,000 characters. Very long post lists keep the first links and
+// say how many more there are; the full list is always in the ZIP's submission.json.
+function fitCell_(lines) {
+  var out = [];
+  var len = 0;
+  for (var i = 0; i < lines.length; i++) {
+    if (len + lines[i].length + 1 > 45000) {
+      out.push('... +' + (lines.length - i) + ' link lagi, lihat submission.json di ZIP');
+      break;
+    }
+    out.push(lines[i]);
+    len += lines[i].length + 1;
+  }
+  return out.join('\n');
 }
 
 // Stop spreadsheet formula injection from user-supplied text.

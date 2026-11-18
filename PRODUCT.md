@@ -17,8 +17,8 @@ The NGO never touches Meta Ads Manager. They describe their ads in plain Indones
 
 ## Operating Context
 - Three steps NGOs already know: fill in the form, review, send ("Kirim ke KawanBantu"). Sending also saves a ZIP copy to Downloads as a backup.
-- One card per story or campaign page; each Drive file or post inside a card becomes one ad, named "<Nama Iklan> 1", "2", ...
-- Field order NGOs know: Nama NGO; per ad: sumber (Drive files or an existing IG/FB post), Nama Iklan, Link Halaman Campaign, creatives (Drive links, Video/Gambar, folder file counts) or post links, Primary Text, Headline.
+- One card per story or campaign page; each Drive file or post inside a card becomes one ad, named "<Nama Iklan> 1", "2", ... A card can mix Drive files/folders and IG/FB posts in one list (the link decides which), with no limit on how many (Dean, 2026-11-18).
+- Field order NGOs know: Nama NGO; per ad: Nama Iklan, Link Halaman Campaign, creatives (one list of Drive links with Video/Gambar and folder file counts, and/or IG/FB post links), Primary Text, Headline (asked unless every link is a post, because posts keep their own caption).
 - Existing-post ads require @kawanbantu as a collaborator and an accepted Partnership Ads request.
 - Submissions land in KawanBantu's Google Sheet tracker; the NGO gets a submission number.
 

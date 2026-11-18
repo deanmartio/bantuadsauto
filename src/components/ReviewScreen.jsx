@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { getDuplicateAdNames } from '../utils/validation';
 import { getSubmissionSummary } from '../utils/zipGenerator';
-import { getExpandedCreatives, getExpandedPosts, getInstagramPosts, getLocalDateString } from '../utils/driveUtils';
+import { getExpandedAds, getInstagramPosts, getLocalDateString, needsAdText } from '../utils/driveUtils';
 import { isSubmitEnabled } from '../utils/submitService';
 import { Icon, Fig } from './ui';
 import SendProgress from './SendProgress';
@@ -48,8 +48,8 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Review Sebelum Kirim</h1>
-        <p className="text-[15px] text-ink-soft mt-2">
+        <h1 className="text-[2rem] sm:text-[2.5rem] leading-[1.05] font-extrabold text-ink tracking-[-0.035em]">Review Sebelum Kirim</h1>
+        <p className="text-[15px] text-ink-soft mt-3">
           Cek sekali lagi. Setelah dikirim, tim KawanBantu langsung menyiapkan iklanmu.
           {pendingCollab > 0 && <> Ada <span className="font-semibold text-plum-deep">1 langkah terakhir</span> di bawah sebelum kirim.</>}
         </p>
@@ -80,26 +80,24 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
 
       <div className="flex flex-col gap-3">
         {adRows.map((row, i) => {
-          const isPost = row.source === 'post';
-          const ads = isPost ? getExpandedPosts(row) : getExpandedCreatives(row);
+          const ads = getExpandedAds(row);
           // Same running numbers as the ledger beside the form.
-          const offset = adRows.slice(0, i).reduce((n, r) => n + (r.source === 'post' ? getExpandedPosts(r) : getExpandedCreatives(r)).length, 0);
+          const offset = adRows.slice(0, i).reduce((n, r) => n + getExpandedAds(r).length, 0);
           return (
-            <section key={row.id} className="leaf p-5">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <h2 className="text-base font-bold text-ink break-words">{row.adName.trim()}</h2>
+            <section key={row.id} className="leaf p-5 sm:p-6">
+              <div className="flex items-center gap-4 mb-3">
+                <span className="text-[2rem] font-extrabold tracking-[-0.04em] leading-none text-brand-deep tabular-nums shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-[17px] font-bold text-ink break-words">{row.adName.trim()}</h2>
                   <a href={row.campaignLink.trim()} target="_blank" rel="noreferrer"
                     className="text-xs font-medium text-brand-deep hover:underline break-all">
                     {row.campaignLink.trim()}
                   </a>
                 </div>
-                <span className="text-xs font-semibold text-ink-soft bg-paper rounded-full px-2.5 py-1 shrink-0 tabular-nums">
-                  Iklan <Fig>{String(i + 1).padStart(2, '0')}</Fig> · <Fig>{ads.length}</Fig> iklan di Meta
-                </span>
+                <span className="text-[13px] text-ink-soft shrink-0"><Fig className="text-ink font-medium">{ads.length}</Fig> iklan di Meta</span>
               </div>
 
-              {!isPost && (
+              {needsAdText(row) && (
                 <div className="grid sm:grid-cols-2 gap-4 text-sm border-t border-line pt-3 mb-3">
                   <div className="min-w-0">
                     <p className="text-xs text-ink-soft mb-1">Headline</p>
@@ -117,11 +115,12 @@ export default function ReviewScreen({ ngoName, adRows, onBack, onExport, onSubm
                 <ol className="flex flex-col">
                   {ads.map((ad, ai) => (
                     <li key={ai} className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem] gap-x-2 items-baseline py-1.5 border-b border-line last:border-b-0 text-sm">
-                      <Fig className="text-xs text-plum-deep">{String(offset + ai + 1).padStart(3, '0')}</Fig>
+                      <Fig className="text-xs text-brand-deep font-medium">{String(offset + ai + 1).padStart(3, '0')}</Fig>
                       <span className="min-w-0">
                         <span className="font-semibold text-ink">{ad.adName}</span>
-                        <span className="text-xs text-ink-faint ml-2 break-all">{isPost ? ad.postLink : ad.filename}</span>                      </span>
-                      <span className="text-[11px] font-semibold tracking-[0.06em] text-ink-soft text-right">{isPost ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</span>
+                        <span className="text-xs text-ink-faint ml-2 break-all">{ad.kind === 'post' ? ad.postLink : ad.filename}</span>
+                      </span>
+                      <span className="text-[11px] font-semibold tracking-[0.06em] text-ink-soft text-right">{ad.kind === 'post' ? 'POST' : ad.type === 'Video' ? 'VIDEO' : 'GAMBAR'}</span>
                     </li>
                   ))}
                 </ol>
