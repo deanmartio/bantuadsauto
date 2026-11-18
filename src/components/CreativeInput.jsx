@@ -84,9 +84,10 @@ function describe(link) {
   return 'Link belum diisi';
 }
 
-// Every link pasted at once (one per line, or separated by spaces).
+// Every link pasted at once (one per line, or separated by spaces), with or without https://.
 function linksIn(text) {
-  return (text || '').split(/\s+/).map(t => t.trim()).filter(t => /^https?:\/\//i.test(t));
+  return (text || '').split(/\s+/).map(t => t.trim())
+    .filter(t => /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/|$)/i.test(t));
 }
 
 // One line of a card's content list. The link decides what it is: a Google Drive file or folder
