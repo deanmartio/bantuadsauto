@@ -26,7 +26,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, submission, onSt
           <>
             <div className="flex items-start justify-between gap-6 mb-5">
               <div>
-                <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Submission Terkirim</h1>
+                <h1 className="text-[2rem] leading-[1.1] font-extrabold text-ink tracking-[-0.03em]">Submission Terkirim</h1>
                 <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
                   Tim KawanBantu sudah menerima submission <span className="font-semibold text-ink">{ngoName}</span>.
                   Tidak perlu kirim lewat WhatsApp lagi.
@@ -48,7 +48,7 @@ export default function SuccessScreen({ ngoName, exportedFiles, submission, onSt
           </>
         ) : (
           <>
-            <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">File ZIP Sudah Diunduh</h1>
+            <h1 className="text-[2rem] leading-[1.1] font-extrabold text-ink tracking-[-0.03em]">File ZIP Sudah Diunduh</h1>
             <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
               Satu langkah lagi: kirim file ini ke tim KawanBantu lewat WhatsApp atau grup chat.
             </p>

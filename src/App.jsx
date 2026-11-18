@@ -9,6 +9,7 @@ import SidePanel from './components/SidePanel';
 import { Icon } from './components/ui';
 import { generateExportZip, bytesToBase64, getSubmissionSummary } from './utils/zipGenerator';
 import { submitToKawanBantu } from './utils/submitService';
+import { newItem } from './utils/driveUtils';
 
 const STORAGE_KEY = 'bantuads_form_draft';
 let nextId = 1;
@@ -18,34 +19,33 @@ function createEmptyRow() {
     id: nextId++,
     adName: '',
     campaignLink: '',
-    source: 'drive', // 'drive' = Drive videos/images, 'post' = existing IG/FB post
-    postLinks: [''],
-    postCollab: [false], // per post link: NGO confirmed @kawanbantu is invited as collaborator
-    creatives: [{ link: '', type: 'Video', count: 1 }],
+    // One list of links: Drive files/folders and existing IG/FB posts, in any mix (see driveUtils).
+    items: [],
     primaryText: '',
     headline: '',
   };
 }
 
-// Migrate drafts saved before multi-variant primary text/headline was removed
-// (Meta's bulk XLSX format never actually supported testing multiple variants —
-// see xlsxGenerator.js) so old saved rows don't crash on the new single-string shape.
+// Bring drafts saved by older versions of the form up to the current row shape.
 function migrateRow(row) {
-  if (!row.source) row = { ...row, source: 'drive' };
-  if (!row.postLinks) {
-    const { postLink, ...rest } = row;
-    row = { ...rest, postLinks: [postLink || ''] };
+  // Before Nov 2026 a card was either Drive files ("creatives") or posts ("postLinks"), never both.
+  if (!row.items) {
+    const { source, creatives, postLinks, postLink, postCollab, ...rest } = row;
+    const items = source === 'post'
+      ? (postLinks || [postLink || '']).map((link, i) => ({ ...newItem(), link: link || '', collab: Boolean(postCollab?.[i]) }))
+      : (creatives || [newItem()]).map(c => ({ ...newItem(), ...c }));
+    row = { ...rest, items: items.filter(i => i.link.trim()) };
   }
-  if (!row.postCollab) row = { ...row, postCollab: row.postLinks.map(() => false) };
+  // Drafts from before multi-variant primary text/headline was removed.
   if (row.primaryTexts || row.headlines) {
     const { primaryTexts, headlines, ...rest } = row;
-    return {
+    row = {
       ...rest,
       primaryText: row.primaryText ?? primaryTexts?.find(t => t.trim()) ?? '',
       headline: row.headline ?? headlines?.find(h => h.trim()) ?? '',
     };
   }
-  return row;
+  return { primaryText: '', headline: '', ...row };
 }
 
 function loadDraft() {
@@ -103,10 +103,10 @@ export default function App() {
   }, []);
 
   // Ticked on the review screen: @kawanbantu is invited as collaborator on this Instagram post.
-  const setCollab = useCallback((rowId, pi, value) => {
+  const setCollab = useCallback((rowId, itemIndex, value) => {
     setAdRows(prev => prev.map(r => r.id !== rowId ? r : {
       ...r,
-      postCollab: (r.postLinks || []).map((_, i) => i === pi ? value : Boolean(r.postCollab?.[i])),
+      items: r.items.map((item, i) => i === itemIndex ? { ...item, collab: value } : item),
     }));
   }, []);
 
@@ -247,17 +247,17 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 pb-16">
         {screen === 'form' && (
           <>
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px] items-start">
-              <div className="flex flex-col gap-5 min-w-0">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_420px] lg:gap-9 items-start">
+              <div className="flex flex-col gap-6 min-w-0">
                 <div className="max-w-3xl">
-                  <h1 className="text-[1.75rem] leading-tight font-bold text-ink tracking-[-0.02em]">Submission Iklan</h1>
-                  <p className="text-[15px] text-ink-soft mt-2 leading-relaxed">
+                  <h1 className="text-[2rem] sm:text-[2.5rem] leading-[1.05] font-extrabold text-ink tracking-[-0.035em]">Submission Iklan</h1>
+                  <p className="text-[15px] text-ink-soft mt-3 leading-relaxed max-w-xl">
                     Satu iklan untuk satu cerita; setiap video, gambar atau postingan di dalamnya jadi 1 iklan di Meta.
                   </p>
                 </div>
 
                 {sentAs && (
-                  <div className="flex items-start gap-3 rounded-2xl bg-plum-tint px-5 py-4" role="status">
+                  <div className="leaf flex items-start gap-3 px-5 py-4" role="status">
                     <Icon name="info" className="w-5 h-5 text-plum-deep mt-0.5 shrink-0" />
                     <p className="text-sm text-ink leading-relaxed">
                       Kamu sedang mengedit submission <span className="font-mono font-medium">{sentAs.submissionId}</span> yang sudah terkirim.
@@ -283,7 +283,7 @@ export default function App() {
                   onAdd={handleAddRow}
                 />
               </div>
-              <aside className="lg:sticky lg:top-5 lg:flex lg:flex-col lg:max-h-[calc(100vh-6.5rem)]" aria-label="Pratinjau, rincian iklan dan kirim">
+              <aside className="lg:sticky lg:top-5 lg:flex lg:flex-col lg:max-h-[calc(100vh-2.5rem)]" aria-label="Pratinjau, rincian iklan dan kirim">
                 <SidePanel
                   ngoName={ngoName}
                   adRows={adRows}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AdPreview from './AdPreview';
 import { Icon, Fig } from './ui';
-import { getExpandedCreatives, getExpandedPosts } from '../utils/driveUtils';
+import { getExpandedAds } from '../utils/driveUtils';
 
 // One passbook line per ad that will be created, in card order. A card with nothing to print yet
 // keeps a blank dashed line, so the NGO sees the gap instead of a shorter list.
@@ -9,9 +9,9 @@ function getLedger(adRows) {
   const lines = [];
   adRows.forEach((row, i) => {
     const named = row.adName.trim();
-    const ads = row.source === 'post'
-      ? getExpandedPosts(row).map(p => ({ name: p.adName, kind: 'POST', detail: p.postLink.replace(/^https?:\/\/(www\.)?/, '') }))
-      : getExpandedCreatives(row).map(c => ({ name: c.adName, kind: c.type === 'Video' ? 'VIDEO' : 'GAMBAR', detail: c.isFolder ? `folder, file ke-${c.folderFileIndex + 1}` : c.filename }));
+    const ads = getExpandedAds(row).map(a => a.kind === 'post'
+      ? { name: a.adName, kind: 'POST', detail: a.postLink.replace(/^https?:\/\/(www\.)?/, '') }
+      : { name: a.adName, kind: a.type === 'Video' ? 'VIDEO' : 'GAMBAR', detail: a.isFolder ? `folder, file ke-${a.folderFileIndex + 1}` : a.filename });
     if (ads.length === 0) {
       lines.push({ key: `${row.id}-blank`, rowId: row.id, blank: true, name: named || `Iklan ${String(i + 1).padStart(2, '0')}` });
       return;
@@ -45,8 +45,8 @@ function Ledger({ lines, activeRowId, onJump }) {
   }, [signature, activeRowId]);
 
   return (
-    <div className="flex flex-col lg:min-h-0">
-      <p className="shrink-0 px-4 pb-2.5 text-[13px] text-ink-soft">Setiap file atau postingan jadi 1 iklan di Meta.</p>
+    <div className="flex flex-col lg:min-h-0 rounded-[18px] bg-white text-ink overflow-hidden">
+      <p className="shrink-0 px-4 pt-3.5 pb-2.5 text-[13px] text-ink-soft">Setiap file atau postingan jadi 1 iklan di Meta.</p>
       <div className="shrink-0 grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 px-4 py-2 text-[11px] font-semibold text-ink-soft border-y border-line bg-paper/60">
         <span>No</span><span>Iklan di Meta</span><span className="text-right">Sumber</span>
       </div>
@@ -59,7 +59,7 @@ function Ledger({ lines, activeRowId, onJump }) {
                 type="button"
                 onClick={() => onJump(line.rowId)}
                 className={`w-full grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem] gap-x-2 items-baseline px-4 py-2 text-left transition-colors duration-150 ${
-                  active ? 'bg-plum-tint' : 'hover:bg-paper'
+                  active ? 'bg-brand-tint' : 'hover:bg-paper'
                 }`}
               >
                 {line.blank ? (
@@ -72,7 +72,7 @@ function Ledger({ lines, activeRowId, onJump }) {
                   </>
                 ) : (
                   <>
-                    <Fig className="text-xs text-plum-deep">{String(line.no).padStart(3, '0')}</Fig>
+                    <Fig className="text-xs text-brand-deep font-medium">{String(line.no).padStart(3, '0')}</Fig>
                     <span className="min-w-0">
                       <span className="block text-[13px] font-semibold text-ink truncate">{line.name}</span>
                       <span className="block text-[11px] text-ink-faint truncate">{line.detail}</span>
@@ -95,28 +95,37 @@ function Ledger({ lines, activeRowId, onJump }) {
 
 function Preview({ ngoName, row }) {
   if (!row) return null;
-  if (row.source === 'post') {
+  const ads = getExpandedAds(row);
+  const posts = ads.filter(a => a.kind === 'post').length;
+  const postNote = 'Video dan caption diambil dari postingannya, jadi tampilannya sama seperti di Instagram/Facebook.';
+  if (posts > 0 && posts === ads.length) {
     return (
-      <div className="m-4 rounded-xl bg-paper px-4 py-6 text-center">
-        <Icon name="link" className="w-6 h-6 mx-auto text-brand-deep mb-2" />
-        <p className="text-sm font-semibold text-ink">Memakai postingan yang sudah ada</p>
-        <p className="text-[13px] text-ink-soft mt-1 leading-relaxed">
-          Video dan caption diambil dari postingannya, jadi tampilannya sama seperti di Instagram/Facebook.
-        </p>
+      <div className="rounded-[18px] bg-white/10 px-5 py-8 text-center">
+        <p className="text-[15px] font-semibold text-white"><Fig>{posts}</Fig> postingan yang sudah ada</p>
+        <p className="text-[13px] text-white/85 mt-1.5 leading-relaxed">{postNote}</p>
       </div>
     );
   }
-  return <div className="px-4 pt-3 pb-4"><AdPreview ngoName={ngoName} row={row} /></div>;
+  return (
+    <div>
+      <AdPreview ngoName={ngoName} row={row} />
+      {posts > 0 && (
+        <p className="mt-4 rounded-[14px] bg-white/10 px-3.5 py-2.5 text-xs text-white/85 leading-relaxed">
+          <span className="font-semibold text-white">+ <Fig>{posts}</Fig> postingan IG/FB.</span> {postNote}
+        </p>
+      )}
+    </div>
+  );
 }
 
 // The send-off: counts, what is still missing (each item jumps to its field), and the one button.
 function ActionCard({ cards, ads, issues, showIssues, onContinue, onJumpIssue }) {
   const shown = issues.slice(0, 5);
   return (
-    <section className="leaf p-4 shrink-0" aria-label="Lanjut ke review">
+    <section className="rounded-[18px] bg-white text-ink p-4 shrink-0" aria-label="Lanjut ke review">
       <div className="flex items-baseline justify-between text-[13px] text-ink-soft mb-3">
-        <span><Fig className="text-ink font-medium">{cards}</Fig> iklan diisi</span>
-        <span><Fig className="text-ink font-medium">{ads}</Fig> iklan di Meta</span>
+        <span><Fig className="text-ink font-medium text-[15px]">{cards}</Fig> iklan diisi</span>
+        <span><Fig className="text-ink font-medium text-[15px]">{ads}</Fig> iklan di Meta</span>
       </div>
       {showIssues && issues.length > 0 && (
         <div className="rounded-xl bg-danger-tint px-3 py-2.5 mb-3" role="status">
@@ -157,38 +166,40 @@ export default function SidePanel({ ngoName, adRows, activeRowId, onJump, ads, i
   const index = Math.max(0, adRows.findIndex(r => r.id === activeRowId));
   const row = adRows[index];
   const lines = getLedger(adRows);
+  const rowAds = row ? getExpandedAds(row).length : 0;
 
   return (
-    <div className="flex flex-col gap-3 lg:min-h-0">
-      <section className="leaf flex flex-col overflow-hidden lg:min-h-0">
-        <div className="shrink-0 flex items-center gap-1 p-1.5 border-b border-line" role="tablist" aria-label="Pratinjau dan rincian iklan">
-          {TABS.map(t => {
-            const on = tab === t.key;
-            return (
-              <button key={t.key} type="button" role="tab" id={`tab-${t.key}`} aria-selected={on} aria-controls={`panel-${t.key}`}
-                onClick={() => setTab(t.key)}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-150 ${
-                  on ? 'bg-plum-tint text-plum-deep' : 'text-ink-soft hover:text-ink hover:bg-paper'
-                }`}>
-                {t.label}
-                {t.key === 'ledger' && <Fig className={`text-xs rounded-md px-1.5 py-0.5 ${on ? 'bg-white text-plum-deep' : 'bg-paper-deep text-ink-soft'}`}>{ads}</Fig>}
-              </button>
-            );
-          })}
+    <div className="flex flex-col gap-3 lg:min-h-0 rounded-[28px] bg-desk text-white p-4 sm:p-5">
+      <div className="shrink-0 flex items-baseline justify-between gap-3 px-1">
+        <p className="text-[15px] font-bold truncate">
+          Iklan <Fig>{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
+        </p>
+        <p className="text-[13px] text-white/80 shrink-0"><Fig>{rowAds}</Fig> iklan di Meta</p>
+      </div>
+      <div className="shrink-0 self-start flex items-center gap-1 rounded-full bg-black/20 p-[3px]" role="tablist" aria-label="Pratinjau dan rincian iklan">
+        {TABS.map(t => {
+          const on = tab === t.key;
+          return (
+            <button key={t.key} type="button" role="tab" id={`tab-${t.key}`} aria-selected={on} aria-controls={`panel-${t.key}`}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-150 ${
+                on ? 'bg-white text-desk' : 'text-white hover:bg-white/10'
+              }`}>
+              {t.label}
+              {t.key === 'ledger' && <Fig>{ads}</Fig>}
+            </button>
+          );
+        })}
+      </div>
+      {tab === 'preview' ? (
+        <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" className="lg:min-h-0 overflow-y-auto py-1">
+          <Preview ngoName={ngoName} row={row} />
         </div>
-        {tab === 'preview' ? (
-          <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" className="lg:min-h-0 overflow-y-auto">
-            <p className="px-4 pt-3 text-[13px] text-ink-soft truncate">
-              Iklan <Fig className="text-plum-deep">{String(index + 1).padStart(2, '0')}</Fig>{row?.adName.trim() && ` · ${row.adName.trim()}`}
-            </p>
-            <Preview ngoName={ngoName} row={row} />
-          </div>
-        ) : (
-          <div id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" className="flex flex-col pt-3 lg:min-h-0">
-            <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
-          </div>
-        )}
-      </section>
+      ) : (
+        <div id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" className="flex flex-col lg:min-h-0">
+          <Ledger lines={lines} activeRowId={activeRowId} onJump={onJump} />
+        </div>
+      )}
       <ActionCard cards={adRows.length} ads={ads} issues={issues} showIssues={showIssues} onContinue={onContinue} onJumpIssue={onJumpIssue} />
     </div>
   );

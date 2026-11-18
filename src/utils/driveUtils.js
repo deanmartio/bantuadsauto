@@ -19,40 +19,64 @@ export function buildAdName(adName, creativeIndex, totalCreatives) {
   return `${adName} ${creativeIndex + 1}`;
 }
 
-// Expands a row's creatives, accounting for folder links with multiple files.
-// Returns a flat list where each entry has { link, type, isFolder, filename, adName }.
-export function getExpandedCreatives(row) {
-  // Ads built from an existing IG/FB post have no Drive creatives (see isPostRow).
-  if (isPostRow(row)) return [];
+// A card holds one list of links ("items"). Each item is a Google Drive file or folder, or an
+// existing Instagram/Facebook post, recognised from its link, so one card can mix both.
+// Item shape: { link, type: 'Video' | 'Gambar', count, countManual, collab }.
+export function newItem() {
+  return { link: '', type: 'Video', count: 1 };
+}
+
+// 'empty' | 'post' | 'drive' | 'unknown'
+export function itemKind(link) {
+  const l = (link || '').trim();
+  if (!l) return 'empty';
+  if (/(^|[/.])(instagram\.com|facebook\.com|fb\.com|fb\.watch)(\/|$)/i.test(l)) return 'post';
+  if (/(^|[/.])google\.com(\/|$)/i.test(l)) return 'drive';
+  return 'unknown';
+}
+
+// Every Meta ad a card will create, in list order. Ads are numbered across the whole card
+// ("Abah Kani 1", "2", ...) whether they come from Drive or from a post. A Drive-only card gets
+// exactly the names and filenames it always had.
+export function getExpandedAds(row) {
   const flat = [];
-  row.creatives.filter(c => c.link.trim()).forEach(c => {
-    const isFolder = isFolderLink(c.link);
-    const count = isFolder ? Math.max(1, c.count || 1) : 1;
-    for (let i = 0; i < count; i++) {
-      flat.push({ link: c.link, type: c.type, isFolder, folderFileIndex: i });
+  (row.items || []).forEach((item, itemIndex) => {
+    const kind = itemKind(item.link);
+    if (kind === 'post') {
+      flat.push({ kind, itemIndex, postLink: item.link.trim(), collaboratorConfirmed: Boolean(item.collab) });
+    } else if (kind === 'drive') {
+      const isFolder = isFolderLink(item.link);
+      const count = isFolder ? Math.max(1, item.count || 1) : 1;
+      for (let i = 0; i < count; i++) {
+        flat.push({ kind, itemIndex, link: item.link, type: item.type, isFolder, folderFileIndex: i });
+      }
     }
   });
 
   const total = flat.length;
-  return flat.map((c, idx) => ({
-    ...c,
-    filename: buildCreativeFilename(row.adName, idx, total, c.type),
-    adName: buildAdName(row.adName, idx, total),
-  }));
+  // seq: the ad's number inside the card (1-based), shared by Drive files and posts.
+  return flat.map((ad, idx) => ad.kind === 'post'
+    ? { ...ad, seq: idx + 1, adName: buildAdName(row.adName.trim(), idx, total) }
+    : { ...ad, seq: idx + 1, filename: buildCreativeFilename(row.adName, idx, total, ad.type), adName: buildAdName(row.adName, idx, total) });
 }
 
-// A row whose creative is an existing Instagram/Facebook post instead of Drive files.
-export function isPostRow(row) {
-  return row.source === 'post';
+// Drive ads only: { link, type, isFolder, folderFileIndex, filename, adName }.
+export function getExpandedCreatives(row) {
+  return getExpandedAds(row).filter(a => a.kind === 'drive');
 }
 
-// One ad per post link, named like Drive creatives ("Abah Kani 1", "Abah Kani 2"...).
+// Post ads only: { postLink, collaboratorConfirmed, adName }.
 export function getExpandedPosts(row) {
-  if (!isPostRow(row)) return [];
-  const links = (row.postLinks || [])
-    .map((l, i) => ({ postLink: l.trim(), collaboratorConfirmed: Boolean(row.postCollab?.[i]) }))
-    .filter(p => p.postLink);
-  return links.map((p, idx) => ({ ...p, adName: buildAdName(row.adName.trim(), idx, links.length) }));
+  return getExpandedAds(row)
+    .filter(a => a.kind === 'post')
+    .map(({ postLink, collaboratorConfirmed, adName }) => ({ postLink, collaboratorConfirmed, adName }));
+}
+
+// Primary text and headline are for Drive ads; posts keep their own caption. A card asks for the
+// text unless every recognised link is a post (an empty or unrecognised link decides nothing yet).
+export function needsAdText(row) {
+  const kinds = (row.items || []).map(i => itemKind(i.link)).filter(k => k === 'post' || k === 'drive');
+  return !(kinds.length > 0 && kinds.every(k => k === 'post'));
 }
 
 export function isPostLink(link) {
@@ -66,20 +90,11 @@ export function isInstagramLink(link) {
   return /^https:\/\/(www\.|m\.)?instagram\.com\/\S+$/i.test((link || '').trim());
 }
 
-// Every Instagram post in the submission, with where its tick lives (row id + link index).
+// Every Instagram post in the submission, with where its tick lives (row id + item index).
 export function getInstagramPosts(adRows) {
-  return adRows.filter(isPostRow).flatMap(row => {
-    const filled = (row.postLinks || []).map((l, i) => ({ link: l.trim(), i })).filter(x => x.link);
-    return filled
-      .map((x, idx) => ({
-        rowId: row.id,
-        pi: x.i,
-        postLink: x.link,
-        adName: buildAdName(row.adName.trim(), idx, filled.length),
-        confirmed: Boolean(row.postCollab?.[x.i]),
-      }))
-      .filter(p => isInstagramLink(p.postLink));
-  });
+  return adRows.flatMap(row => getExpandedAds(row)
+    .filter(a => a.kind === 'post' && isInstagramLink(a.postLink))
+    .map(a => ({ rowId: row.id, pi: a.itemIndex, postLink: a.postLink, adName: a.adName, confirmed: a.collaboratorConfirmed })));
 }
 
 export function getLocalDateString() {

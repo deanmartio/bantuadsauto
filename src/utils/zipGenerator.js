@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { generateXLSX } from './xlsxGenerator';
 import { generatePythonScript } from './pythonScriptGenerator';
-import { getLocalDateString, getExpandedCreatives, getExpandedPosts, isPostRow } from './driveUtils';
+import { getLocalDateString, getExpandedCreatives, getExpandedPosts } from './driveUtils';
 
 export function getZipFilename(ngoName) {
   const date = getLocalDateString();
@@ -10,11 +10,12 @@ export function getZipFilename(ngoName) {
 
 // What KawanBantu's intake and processing need to know about this submission.
 export function getSubmissionSummary(adRows) {
-  const driveRows = adRows.filter(r => !isPostRow(r));
-  const postRows = adRows.filter(isPostRow);
+  // A card can hold Drive files and posts together: its Drive ads go in the XLSX, its posts in
+  // the manifest, each keeping its number from the card's one list.
+  const driveRows = adRows.filter(r => getExpandedCreatives(r).length > 0);
   const driveAdCount = driveRows.reduce((n, r) => n + getExpandedCreatives(r).length, 0);
-  const posts = postRows.flatMap(r => getExpandedPosts(r).map(p => ({ ...p, campaignLink: r.campaignLink.trim() })));
-  const mode = postRows.length === 0 ? 'drive' : driveRows.length === 0 ? 'existing_post' : 'mixed';
+  const posts = adRows.flatMap(r => getExpandedPosts(r).map(p => ({ ...p, campaignLink: r.campaignLink.trim() })));
+  const mode = posts.length === 0 ? 'drive' : driveAdCount === 0 ? 'existing_post' : 'mixed';
   return {
     driveRows,
     posts,
