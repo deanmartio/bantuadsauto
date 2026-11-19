@@ -84,9 +84,10 @@ function describe(link) {
   return 'Link belum diisi';
 }
 
-// Every link pasted at once (one per line, or separated by spaces).
+// Every link pasted at once (one per line, or separated by spaces), with or without https://.
 function linksIn(text) {
-  return (text || '').split(/\s+/).map(t => t.trim()).filter(t => /^https?:\/\//i.test(t));
+  return (text || '').split(/\s+/).map(t => t.trim())
+    .filter(t => /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/|$)/i.test(t));
 }
 
 // One line of a card's content list. The link decides what it is: a Google Drive file or folder
@@ -138,6 +139,26 @@ export default function CreativeInput({ creative, index, inputId, invalid, onUpd
       </button>
       {isFolder && <FolderCount creative={creative} index={index} onUpdate={onUpdate} />}
     </div>
+  );
+}
+
+// The three kinds of link a card accepts, shown as their real logos under the Creatives note.
+export function SourceLogos() {
+  return (
+    <ul className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="Link yang bisa ditambahkan">
+      {[
+        { link: 'drive.google.com/x', label: 'Google Drive' },
+        { link: 'instagram.com/x', label: 'Instagram' },
+        { link: 'facebook.com/x', label: 'Facebook' },
+      ].map(s => (
+        <li key={s.label} className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+          <span className="w-8 h-8 rounded-[9px] bg-white shadow-[0_1px_3px_rgb(43_32_51/0.12)] flex items-center justify-center">
+            <PlatformMark link={s.link} />
+          </span>
+          {s.label}
+        </li>
+      ))}
+    </ul>
   );
 }
 

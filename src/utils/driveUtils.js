@@ -26,9 +26,19 @@ export function newItem() {
   return { link: '', type: 'Video', count: 1 };
 }
 
+// NGOs often paste "instagram.com/..." or "drive.google.com/..." without https://. Add it, so
+// detection and the submission always work with a full link. http:// is upgraded to https://.
+export function normalizeLink(link) {
+  const l = (link || '').trim();
+  if (!l) return '';
+  if (/^https:\/\//i.test(l)) return l;
+  if (/^http:\/\//i.test(l)) return 'https://' + l.slice(7);
+  return 'https://' + l.replace(/^\/+/, '');
+}
+
 // 'empty' | 'post' | 'drive' | 'unknown'
 export function itemKind(link) {
-  const l = (link || '').trim();
+  const l = normalizeLink(link);
   if (!l) return 'empty';
   if (/(^|[/.])(instagram\.com|facebook\.com|fb\.com|fb\.watch)(\/|$)/i.test(l)) return 'post';
   if (/(^|[/.])google\.com(\/|$)/i.test(l)) return 'drive';
@@ -43,12 +53,14 @@ export function getExpandedAds(row) {
   (row.items || []).forEach((item, itemIndex) => {
     const kind = itemKind(item.link);
     if (kind === 'post') {
-      flat.push({ kind, itemIndex, postLink: item.link.trim(), collaboratorConfirmed: Boolean(item.collab) });
+      flat.push({ kind, itemIndex, postLink: normalizeLink(item.link), collaboratorConfirmed: Boolean(item.collab) });
     } else if (kind === 'drive') {
       const isFolder = isFolderLink(item.link);
       const count = isFolder ? Math.max(1, item.count || 1) : 1;
       for (let i = 0; i < count; i++) {
-        flat.push({ kind, itemIndex, link: item.link, type: item.type, isFolder, folderFileIndex: i });
+        // A full https:// link stays exactly as typed (so Drive-only output is unchanged).
+        const link = /^https:\/\//i.test(item.link.trim()) ? item.link : normalizeLink(item.link);
+        flat.push({ kind, itemIndex, link, type: item.type, isFolder, folderFileIndex: i });
       }
     }
   });
@@ -80,14 +92,14 @@ export function needsAdText(row) {
 }
 
 export function isPostLink(link) {
-  return /^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.com|fb\.watch)\/\S+$/i.test(link.trim());
+  return /^https:\/\/(www\.|m\.|web\.)?(instagram\.com|facebook\.com|fb\.com|fb\.watch)\/\S+$/i.test(normalizeLink(link));
 }
 
 // Instagram posts must have @kawanbantu as a collaborator before KawanBantu can run them as ads.
 export const KAWANBANTU_IG = 'kawanbantu';
 
 export function isInstagramLink(link) {
-  return /^https:\/\/(www\.|m\.)?instagram\.com\/\S+$/i.test((link || '').trim());
+  return /^https:\/\/(www\.|m\.)?instagram\.com\/\S+$/i.test(normalizeLink(link));
 }
 
 // Every Instagram post in the submission, with where its tick lives (row id + item index).

@@ -34,7 +34,7 @@ export function getIssues(ngoName, adRows) {
       const kind = itemKind(item.link);
       if (kind === 'empty') add(id, row.id, `${where}: Link belum diisi.`);
       else if (kind === 'unknown') add(id, row.id, `${where}: Tempel link Google Drive, Instagram atau Facebook.`);
-      else if (kind === 'post' && !isPostLink(item.link)) add(id, row.id, `${where}: Link Instagram/Facebook harus diawali https://`);
+      else if (kind === 'post' && !isPostLink(item.link)) add(id, row.id, `${where}: Link postingan Instagram/Facebook belum lengkap.`);
     });
 
     // Posts keep their own caption; the text is only for Drive files.
