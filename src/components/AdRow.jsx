@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import CreativeInput, { PasteSlot } from './CreativeInput';
+import CreativeInput, { PasteSlot, SourceLogos } from './CreativeInput';
 import DriveGuideModal from './DriveGuideModal';
 import { HEADLINE_VISIBLE } from './AdPreview';
 import { Icon, Label, FieldError, Hint, Budget, Fig } from './ui';
@@ -22,13 +22,14 @@ function summaryLabel(row) {
 
 // One part of the card: a plain title and note, then its fields. Parts are set apart by space,
 // not by boxes, rails or icons.
-function Part({ title, note, aside, children }) {
+function Part({ title, note, below, aside, children }) {
   return (
     <div>
       <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
           <h3 className="text-[17px] font-bold text-ink tracking-[-0.01em] leading-tight">{title}</h3>
           {note && <p className="text-[13px] text-ink-soft mt-0.5">{note}</p>}
+          {below}
         </div>
         {aside}
       </div>
@@ -150,6 +151,7 @@ export default function AdRow({ row, index, totalRows, isDuplicate, issues, show
           {/* 2. Creatives: Drive files/folders and existing IG/FB posts, in one list */}
           <Part title="Creatives"
             note="Link Google Drive dan/atau postingan IG/FB. Setiap file atau postingan jadi 1 iklan di Meta."
+            below={<SourceLogos />}
             aside={
               <button type="button" onClick={() => setShowDriveGuide(true)} className="flex items-center gap-1 text-[13px] font-semibold text-brand-deep hover:underline">
                 Panduan link Drive

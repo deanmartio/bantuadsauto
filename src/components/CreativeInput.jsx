@@ -142,6 +142,26 @@ export default function CreativeInput({ creative, index, inputId, invalid, onUpd
   );
 }
 
+// The three kinds of link a card accepts, shown as their real logos under the Creatives note.
+export function SourceLogos() {
+  return (
+    <ul className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="Link yang bisa ditambahkan">
+      {[
+        { link: 'drive.google.com/x', label: 'Google Drive' },
+        { link: 'instagram.com/x', label: 'Instagram' },
+        { link: 'facebook.com/x', label: 'Facebook' },
+      ].map(s => (
+        <li key={s.label} className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+          <span className="w-8 h-8 rounded-[9px] bg-white shadow-[0_1px_3px_rgb(43_32_51/0.12)] flex items-center justify-center">
+            <PlatformMark link={s.link} />
+          </span>
+          {s.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // The dashed slot under the list: paste one link or many, or type one and press Enter.
 export function PasteSlot({ inputId, invalid, onAdd }) {
   const [draft, setDraft] = useState('');
